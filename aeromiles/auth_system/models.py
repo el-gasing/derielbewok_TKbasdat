@@ -38,6 +38,17 @@ class Member(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.member_id}"
     
+    @staticmethod
+    def generate_member_id():
+        """Generate unique member ID dengan format AMS + 6 digit number"""
+        last_member = Member.objects.all().order_by('id').last()
+        if last_member:
+            last_num = int(last_member.member_id.replace('AMS', ''))
+            new_num = last_num + 1
+        else:
+            new_num = 1
+        return f"AMS{new_num:06d}"
+    
     class Meta:
         verbose_name = 'Member'
         verbose_name_plural = 'Members'
@@ -63,6 +74,17 @@ class Staff(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.staff_id}"
+    
+    @staticmethod
+    def generate_staff_id():
+        """Generate unique staff ID dengan format STF + 6 digit number"""
+        last_staff = Staff.objects.all().order_by('id').last()
+        if last_staff:
+            last_num = int(last_staff.staff_id.replace('STF', ''))
+            new_num = last_num + 1
+        else:
+            new_num = 1
+        return f"STF{new_num:06d}"
     
     class Meta:
         verbose_name = 'Staff'

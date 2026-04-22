@@ -57,13 +57,6 @@ class MemberRegistrationForm(UserCreationForm):
             'placeholder': 'Nomor Telepon'
         })
     )
-    member_id = forms.CharField(
-        max_length=50,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'ID Member'
-        })
-    )
     
     class Meta:
         model = User
@@ -83,10 +76,10 @@ class MemberRegistrationForm(UserCreationForm):
         
         if commit:
             user.save()
-            # Create associated Member profile
+            # Create associated Member profile with auto-generated member_id
             Member.objects.create(
                 user=user,
-                member_id=self.cleaned_data['member_id'],
+                member_id=Member.generate_member_id(),
                 phone_number=self.cleaned_data.get('phone_number', '')
             )
         
@@ -124,13 +117,6 @@ class StaffRegistrationForm(UserCreationForm):
             'placeholder': 'Nomor Telepon'
         })
     )
-    staff_id = forms.CharField(
-        max_length=50,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'ID Staff'
-        })
-    )
     department = forms.ChoiceField(
         choices=Staff._meta.get_field('department').choices,
         widget=forms.Select(attrs={
@@ -156,10 +142,10 @@ class StaffRegistrationForm(UserCreationForm):
         
         if commit:
             user.save()
-            # Create associated Staff profile
+            # Create associated Staff profile with auto-generated staff_id
             Staff.objects.create(
                 user=user,
-                staff_id=self.cleaned_data['staff_id'],
+                staff_id=Staff.generate_staff_id(),
                 phone_number=self.cleaned_data.get('phone_number', ''),
                 department=self.cleaned_data['department']
             )
