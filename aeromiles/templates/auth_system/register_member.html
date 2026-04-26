@@ -398,7 +398,14 @@
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="id_first_name" class="form-label">Nama Depan <span class="text-danger">*</span></label>
+                                    <label for="id_salutation" class="form-label">Salutation <span class="text-danger">*</span></label>
+                                    {{ form.salutation }}
+                                    {% if form.salutation.errors %}
+                                        <div class="error-message">{{ form.salutation.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="form-group">
+                                    <label for="id_first_name" class="form-label">Nama Depan-Tengah <span class="text-danger">*</span></label>
                                     {{ form.first_name }}
                                     {% if form.first_name.errors %}
                                         <div class="error-message">{{ form.first_name.errors.0 }}</div>
@@ -412,15 +419,32 @@
                                     {% endif %}
                                 </div>
                                 <div class="form-group">
-                                    <label for="id_username" class="form-label">Username <span class="text-danger">*</span></label>
-                                    {{ form.username }}
-                                    {% if form.username.errors %}
-                                        <div class="error-message">{{ form.username.errors.0 }}</div>
+                                    <label for="id_nationality" class="form-label">Kewarganegaraan <span class="text-danger">*</span></label>
+                                    {{ form.nationality }}
+                                    {% if form.nationality.errors %}
+                                        <div class="error-message">{{ form.nationality.errors.0 }}</div>
                                     {% endif %}
                                 </div>
                                 <div class="form-group">
-                                    <label for="id_phone_number" class="form-label">Nomor Telepon (Opsional)</label>
+                                    <label for="id_country_code" class="form-label">Country Code <span class="text-danger">*</span></label>
+                                    {{ form.country_code }}
+                                    {% if form.country_code.errors %}
+                                        <div class="error-message">{{ form.country_code.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="form-group">
+                                    <label for="id_phone_number" class="form-label">Nomor HP <span class="text-danger">*</span></label>
                                     {{ form.phone_number }}
+                                    {% if form.phone_number.errors %}
+                                        <div class="error-message">{{ form.phone_number.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="form-group field-full">
+                                    <label for="id_birth_date" class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
+                                    {{ form.birth_date }}
+                                    {% if form.birth_date.errors %}
+                                        <div class="error-message">{{ form.birth_date.errors.0 }}</div>
+                                    {% endif %}
                                 </div>
                             </div>
 

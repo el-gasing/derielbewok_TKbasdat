@@ -27,9 +27,20 @@ class UserRole(models.Model):
 
 class Member(models.Model):
     """Model untuk Member AeroMiles"""
+    SALUTATION_CHOICES = [
+        ('mr', 'Mr'),
+        ('mrs', 'Mrs'),
+        ('ms', 'Ms'),
+        ('dr', 'Dr'),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='member_profile')
     member_id = models.CharField(max_length=50, unique=True)
+    salutation = models.CharField(max_length=10, choices=SALUTATION_CHOICES, default='mr')
+    country_code = models.CharField(max_length=6, default='+62')
     phone_number = models.CharField(max_length=20, blank=True, null=True)
+    birth_date = models.DateField(null=True, blank=True)
+    nationality = models.CharField(max_length=80, default='Indonesia')
     total_miles = models.BigIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -56,6 +67,8 @@ class Member(models.Model):
 
 class Staff(models.Model):
     """Model untuk Staff AeroMiles"""
+    SALUTATION_CHOICES = Member.SALUTATION_CHOICES
+
     DEPARTMENT_CHOICES = [
         ('customer_service', 'Customer Service'),
         ('operations', 'Operations'),
@@ -66,8 +79,13 @@ class Staff(models.Model):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='staff_profile')
     staff_id = models.CharField(max_length=50, unique=True)
-    department = models.CharField(max_length=30, choices=DEPARTMENT_CHOICES)
+    salutation = models.CharField(max_length=10, choices=SALUTATION_CHOICES, default='mr')
+    country_code = models.CharField(max_length=6, default='+62')
     phone_number = models.CharField(max_length=20, blank=True, null=True)
+    birth_date = models.DateField(null=True, blank=True)
+    nationality = models.CharField(max_length=80, default='Indonesia')
+    maskapai = models.ForeignKey('Maskapai', on_delete=models.SET_NULL, null=True, blank=True, related_name='staff_members')
+    department = models.CharField(max_length=30, choices=DEPARTMENT_CHOICES, default='admin')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
