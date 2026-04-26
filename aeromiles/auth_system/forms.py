@@ -1,7 +1,30 @@
+import re
+
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.utils.html import strip_tags
 from .models import ClaimMissingMiles, Member, Staff
+
+
+def _sanitize_text(value, max_length=None):
+    """Membersihkan input teks dari tag HTML dan karakter kontrol."""
+    if value is None:
+        return ""
+
+    cleaned = strip_tags(str(value))
+    cleaned = re.sub(r"[\x00-\x1F\x7F]", "", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
+    if max_length is not None:
+        cleaned = cleaned[:max_length]
+
+    return cleaned
+
+
+def _sanitize_phone(value):
+    cleaned = _sanitize_text(value, max_length=20)
+    return re.sub(r"[^0-9+()\-\s]", "", cleaned)
 
 
 class LoginForm(AuthenticationForm):
@@ -85,6 +108,18 @@ class MemberRegistrationForm(UserCreationForm):
         
         return user
 
+    def clean_username(self):
+        return _sanitize_text(self.cleaned_data.get('username'), max_length=150)
+
+    def clean_first_name(self):
+        return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
+
+    def clean_last_name(self):
+        return _sanitize_text(self.cleaned_data.get('last_name'), max_length=50)
+
+    def clean_phone_number(self):
+        return _sanitize_phone(self.cleaned_data.get('phone_number'))
+
 
 class StaffRegistrationForm(UserCreationForm):
     """Form untuk registrasi Staff"""
@@ -152,6 +187,18 @@ class StaffRegistrationForm(UserCreationForm):
         
         return user
 
+    def clean_username(self):
+        return _sanitize_text(self.cleaned_data.get('username'), max_length=150)
+
+    def clean_first_name(self):
+        return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
+
+    def clean_last_name(self):
+        return _sanitize_text(self.cleaned_data.get('last_name'), max_length=50)
+
+    def clean_phone_number(self):
+        return _sanitize_phone(self.cleaned_data.get('phone_number'))
+
 
 class ClaimMissingMilesForm(forms.ModelForm):
     """Form untuk member membuat dan mengubah claim missing miles."""
@@ -173,6 +220,18 @@ class ClaimMissingMilesForm(forms.ModelForm):
             raise forms.ValidationError('Jumlah miles harus lebih dari 0.')
         return miles_amount
 
+    def clean_flight_number(self):
+        flight_number = _sanitize_text(self.cleaned_data.get('flight_number'), max_length=20).upper()
+        if not re.fullmatch(r"[A-Z0-9\-]+", flight_number):
+            raise forms.ValidationError('Format nomor flight tidak valid.')
+        return flight_number
+
+    def clean_reason(self):
+        return _sanitize_text(self.cleaned_data.get('reason'), max_length=500)
+
+    def clean_description(self):
+        return _sanitize_text(self.cleaned_data.get('description'), max_length=500)
+
 
 class StaffClaimUpdateForm(forms.ModelForm):
     """Form untuk staff membaca dan mengubah status claim."""
@@ -184,6 +243,9 @@ class StaffClaimUpdateForm(forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Catatan staff'}),
         }
+
+    def clean_description(self):
+        return _sanitize_text(self.cleaned_data.get('description'), max_length=500)
 
 
 class TransferMilesForm(forms.Form):
@@ -208,7 +270,7 @@ class TransferMilesForm(forms.Form):
         self.to_member = None
 
     def clean_to_member_id(self):
-        to_member_id = self.cleaned_data['to_member_id']
+        to_member_id = _sanitize_text(self.cleaned_data['to_member_id'], max_length=50).upper()
         try:
             self.to_member = Member.objects.get(member_id=to_member_id, is_active=True)
         except Member.DoesNotExist as exc:
@@ -218,6 +280,9 @@ class TransferMilesForm(forms.Form):
             raise forms.ValidationError('Tidak bisa transfer ke akun sendiri.')
 
         return to_member_id
+
+    def clean_description(self):
+        return _sanitize_text(self.cleaned_data.get('description'), max_length=500)
 
     def clean(self):
         cleaned_data = super().clean()

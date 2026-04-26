@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - AeroMiles</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -21,8 +24,37 @@
         
         body {
             background: var(--surface-soft);
-            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            font-family: "Plus Jakarta Sans", "Trebuchet MS", sans-serif;
             color: var(--text);
+            position: relative;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            z-index: -1;
+            border-radius: 999px;
+            filter: blur(2px);
+            pointer-events: none;
+        }
+
+        body::before {
+            width: 400px;
+            height: 400px;
+            top: -140px;
+            right: -120px;
+            background: radial-gradient(circle, rgba(59, 110, 168, 0.18), rgba(59, 110, 168, 0));
+        }
+
+        body::after {
+            width: 360px;
+            height: 360px;
+            bottom: -120px;
+            left: -100px;
+            background: radial-gradient(circle, rgba(35, 50, 71, 0.18), rgba(35, 50, 71, 0));
         }
         
         .navbar {
@@ -114,6 +146,12 @@
             font-size: 14px;
             opacity: 0.9;
         }
+
+        .welcome-subtext {
+            margin-top: 8px;
+            font-size: 13px;
+            opacity: 0.82;
+        }
         
         .stat-card {
             background: var(--surface);
@@ -184,10 +222,33 @@
             background: var(--accent);
             color: white;
         }
+
+        .menu-button.is-active {
+            background: var(--accent);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 8px 18px rgba(59, 110, 168, 0.24);
+        }
         
         .menu-button i {
             margin-right: 10px;
             width: 20px;
+        }
+
+        .js-reveal {
+            opacity: 0;
+            transform: translateY(18px);
+        }
+
+        .js-reveal.in-view {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.55s ease, transform 0.55s ease;
+        }
+
+        .stat-card {
+            transform-style: preserve-3d;
+            will-change: transform;
         }
 
         @media (max-width: 768px) {
@@ -217,7 +278,10 @@
                         <span class="nav-link">👤 {{ user.first_name|default:user.username }}</span>
                     </li>
                     <li class="nav-item">
-                        <a class="btn-logout" href="{% url 'auth_system:logout' %}">Logout</a>
+                        <form method="post" action="{% url 'auth_system:logout' %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-logout">Logout</button>
+                        </form>
                     </li>
                 </ul>
             </div>
@@ -228,8 +292,8 @@
     <div class="container-fluid py-4">
         <!-- Welcome Section -->
         <div class="welcome-card">
-            <h2>Selamat datang, {{ user.first_name|default:user.username }}! 👋</h2>
-            <p>Kelola akun AeroMiles Anda dengan mudah</p>
+            <h2>Selamat datang, {{ user.first_name|default:user.username }}! </h2>
+            <p class="welcome-subtext" id="welcomeSubtext">Semoga harimu menyenangkan dan produktif.</p>
         </div>
         
         {% if messages %}
@@ -416,5 +480,6 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'auth_system/js/app.js' %}" defer></script>
 </body>
 </html>
