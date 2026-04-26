@@ -258,13 +258,13 @@
                         
                         <div class="menu-section">
                             <h5><i class="fas fa-tasks"></i> Menu</h5>
-                            <a href="#" class="menu-button">
+                            <a href="{% url 'auth_system:member_claim_list' %}" class="menu-button">
                                 <i class="fas fa-arrow-up"></i> Missing Miles
                             </a>
-                            <a href="#" class="menu-button">
+                            <a href="{% url 'auth_system:member_transfer_list' %}" class="menu-button">
                                 <i class="fas fa-exchange-alt"></i> Transfer Miles
                             </a>
-                            <a href="#" class="menu-button">
+                            <a href="{% url 'auth_system:member_transfer_list' %}" class="menu-button">
                                 <i class="fas fa-history"></i> Riwayat Transaksi
                             </a>
                         </div>
@@ -281,7 +281,7 @@
                         
                         <div class="menu-section">
                             <h5><i class="fas fa-tasks"></i> Menu</h5>
-                            <a href="#" class="menu-button">
+                            <a href="{% url 'auth_system:staff_claim_list' %}" class="menu-button">
                                 <i class="fas fa-check-circle"></i> Approve Claims
                             </a>
                             <a href="#" class="menu-button">

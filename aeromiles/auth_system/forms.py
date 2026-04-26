@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
-from .models import Member, Staff
+from .models import ClaimMissingMiles, Member, Staff
 
 
 class LoginForm(AuthenticationForm):
@@ -151,3 +151,77 @@ class StaffRegistrationForm(UserCreationForm):
             )
         
         return user
+
+
+class ClaimMissingMilesForm(forms.ModelForm):
+    """Form untuk member membuat dan mengubah claim missing miles."""
+
+    class Meta:
+        model = ClaimMissingMiles
+        fields = ('flight_number', 'flight_date', 'miles_amount', 'reason', 'description')
+        widgets = {
+            'flight_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: GA123'}),
+            'flight_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'miles_amount': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Alasan claim'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Keterangan tambahan (opsional)'}),
+        }
+
+    def clean_miles_amount(self):
+        miles_amount = self.cleaned_data['miles_amount']
+        if miles_amount <= 0:
+            raise forms.ValidationError('Jumlah miles harus lebih dari 0.')
+        return miles_amount
+
+
+class StaffClaimUpdateForm(forms.ModelForm):
+    """Form untuk staff membaca dan mengubah status claim."""
+
+    class Meta:
+        model = ClaimMissingMiles
+        fields = ('status', 'description')
+        widgets = {
+            'status': forms.Select(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Catatan staff'}),
+        }
+
+
+class TransferMilesForm(forms.Form):
+    """Form transfer miles antar member."""
+
+    to_member_id = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Masukkan ID Member tujuan'})
+    )
+    miles_amount = forms.IntegerField(
+        min_value=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '1'})
+    )
+    description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Keterangan transfer (opsional)'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.from_member = kwargs.pop('from_member')
+        super().__init__(*args, **kwargs)
+        self.to_member = None
+
+    def clean_to_member_id(self):
+        to_member_id = self.cleaned_data['to_member_id']
+        try:
+            self.to_member = Member.objects.get(member_id=to_member_id, is_active=True)
+        except Member.DoesNotExist as exc:
+            raise forms.ValidationError('ID Member tujuan tidak ditemukan atau tidak aktif.') from exc
+
+        if self.to_member.id == self.from_member.id:
+            raise forms.ValidationError('Tidak bisa transfer ke akun sendiri.')
+
+        return to_member_id
+
+    def clean(self):
+        cleaned_data = super().clean()
+        miles_amount = cleaned_data.get('miles_amount')
+        if miles_amount and self.from_member.total_miles < miles_amount:
+            self.add_error('miles_amount', 'Total miles tidak mencukupi untuk transfer ini.')
+        return cleaned_data

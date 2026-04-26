@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - AeroMiles</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-4" style="max-width: 720px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">{{ title }}</h2>
+        <a href="{% url 'auth_system:member_claim_list' %}" class="btn btn-outline-secondary">Kembali</a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors.0 }}</div>
+                {% endif %}
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>
