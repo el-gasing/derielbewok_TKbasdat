@@ -277,8 +277,9 @@ class StaffRegistrationForm(UserCreationForm):
         choices=[('', 'Pilih negara')] + NATIONALITY_CHOICES,
         widget=forms.Select(attrs={'class': 'form-select'})
     )
-    airline_code = forms.ChoiceField(
-        choices=[],
+    maskapai = forms.ModelChoiceField(
+        queryset=Maskapai.objects.none(),
+        empty_label='Pilih maskapai',
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     
@@ -290,9 +291,8 @@ class StaffRegistrationForm(UserCreationForm):
         super().__init__(*args, **kwargs)
         self.fields['password1'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Password'})
         self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Konfirmasi Password'})
-        maskapai_choices = [('', 'Pilih maskapai')]
-        maskapai_choices.extend((m.code, f"{m.code} - {m.name}") for m in Maskapai.objects.filter(is_active=True).order_by('name'))
-        self.fields['airline_code'].choices = maskapai_choices
+        self.fields['maskapai'].queryset = Maskapai.objects.filter(is_active=True).order_by('name')
+        self.fields['maskapai'].label_from_instance = lambda obj: f"{obj.code} - {obj.name}"
     
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -304,7 +304,6 @@ class StaffRegistrationForm(UserCreationForm):
         if commit:
             user.save()
             # Create associated Staff profile with auto-generated staff_id
-            maskapai = Maskapai.objects.filter(code=self.cleaned_data['airline_code']).first()
             Staff.objects.create(
                 user=user,
                 staff_id=Staff.generate_staff_id(),
@@ -313,7 +312,7 @@ class StaffRegistrationForm(UserCreationForm):
                 phone_number=self.cleaned_data['phone_number'],
                 birth_date=self.cleaned_data['birth_date'],
                 nationality=self.cleaned_data['nationality'],
-                maskapai=maskapai,
+                maskapai=self.cleaned_data['maskapai'],
                 department='operations'
             )
         
@@ -337,13 +336,13 @@ class StaffRegistrationForm(UserCreationForm):
             raise forms.ValidationError('Tanggal lahir tidak valid.')
         return value
 
-    def clean_airline_code(self):
-        code = _sanitize_text(self.cleaned_data.get('airline_code'), max_length=10)
-        if not code:
-            raise forms.ValidationError('Kode maskapai wajib dipilih.')
-        if not Maskapai.objects.filter(code=code, is_active=True).exists():
-            raise forms.ValidationError('Kode maskapai tidak valid.')
-        return code
+    def clean_maskapai(self):
+        maskapai = self.cleaned_data.get('maskapai')
+        if not maskapai:
+            raise forms.ValidationError('Maskapai wajib dipilih.')
+        if not maskapai.is_active:
+            raise forms.ValidationError('Maskapai tidak aktif.')
+        return maskapai
 
 
 class ClaimMissingMilesForm(forms.ModelForm):
