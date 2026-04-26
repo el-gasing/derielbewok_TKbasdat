@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Kelola Member - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .members-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .members-header h1 {
+        font-size: 28px;
+        font-weight: 800;
+        color: #1d2f47;
+        margin: 0;
+    }
+
+    .btn-primary {
+        background: #3b6ea8;
+        color: white;
+        border: none;
+        padding: 11px 20px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s ease;
+    }
+
+    .btn-primary:hover {
+        background: #315f92;
+        text-decoration: none;
+        color: white;
+    }
+
+    .search-box {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 24px;
+    }
+
+    .search-box input {
+        flex: 1;
+        max-width: 400px;
+        border: 1px solid #d8e0ea;
+        border-radius: 12px;
+        padding: 11px 14px;
+        font-size: 14px;
+    }
+
+    .search-box button {
+        padding: 11px 20px;
+        background: #3b6ea8;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 18px;
+        border: 1px solid #d8e0ea;
+        overflow: hidden;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .table-container table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table-container th {
+        background: #f3f6fa;
+        padding: 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 13px;
+        color: #64748b;
+        text-transform: uppercase;
+        border-bottom: 1px solid #d8e0ea;
+    }
+
+    .table-container td {
+        padding: 16px;
+        border-bottom: 1px solid #e7edf5;
+        font-size: 14px;
+    }
+
+    .table-container tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table-container tr:hover {
+        background: #f8fbff;
+    }
+
+    .member-id {
+        font-weight: 600;
+        color: #1d2f47;
+    }
+
+    .tier-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .tier-bronze {
+        background: #d4a574;
+        color: white;
+    }
+
+    .tier-silver {
+        background: #c0c0c0;
+        color: white;
+    }
+
+    .tier-gold {
+        background: #ffd700;
+        color: #1d2f47;
+    }
+
+    .tier-platinum {
+        background: #e5e4e2;
+        color: #1d2f47;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-edit, .btn-delete {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .btn-edit {
+        background: #3b6ea8;
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: #315f92;
+    }
+
+    .btn-delete {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #c82333;
+    }
+
+    .pagination {
+        display: flex;
+        gap: 8px;
+        margin-top: 20px;
+        justify-content: center;
+    }
+
+    .pagination a, .pagination span {
+        padding: 8px 12px;
+        border: 1px solid #d8e0ea;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #3b6ea8;
+        font-size: 14px;
+    }
+
+    .pagination span.current {
+        background: #3b6ea8;
+        color: white;
+        border-color: #3b6ea8;
+    }
+
+    .no-members {
+        text-align: center;
+        padding: 40px 20px;
+        color: #64748b;
+    }
+
+    .alert {
+        padding: 14px 16px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .alert-danger {
+        background: #fee;
+        color: #c82333;
+        border: 1px solid #f5c6cb;
+    }
+
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="members-header">
+    <h1>Kelola Member</h1>
+    <a href="{% url 'auth_system:add_member' %}" class="btn-primary">
+        <i class="fas fa-plus"></i> Tambah Member
+    </a>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="search-box">
+    <form method="get" style="display: flex; gap: 10px; flex: 1;">
+        <input type="text" name="search" placeholder="Cari nama, email atau nomor member..." value="{{ search_query }}">
+        <button type="submit">Cari</button>
+    </form>
+</div>
+
+{% if members %}
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>No. Member</th>
+                    <th>Nama Lengkap</th>
+                    <th>Email</th>
+                    <th>Tier</th>
+                    <th>Total Miles</th>
+                    <th>Award Miles</th>
+                    <th>Bergabung</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for member in members %}
+                    <tr>
+                        <td class="member-id">{{ member.member_id }}</td>
+                        <td>{{ member.user.first_name }} {{ member.user.last_name }}</td>
+                        <td>{{ member.user.email }}</td>
+                        <td>
+                            <span class="tier-badge tier-silver">Silver</span>
+                        </td>
+                        <td>{{ member.total_miles|floatformat:0 }}</td>
+                        <td>0</td>
+                        <td>{{ member.created_at|date:"Y-m-d" }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'auth_system:edit_member' member.member_id %}" class="btn-edit">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <form method="post" action="{% url 'auth_system:delete_member' member.member_id %}" style="display: inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus member ini? Semua data terkait akan dihapus.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-delete">
+                                        <i class="fas fa-trash"></i> Hapus
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if members.has_other_pages %}
+        <div class="pagination">
+            {% if members.has_previous %}
+                <a href="?page=1">« First</a>
+                <a href="?page={{ members.previous_page_number }}">‹ Previous</a>
+            {% endif %}
+
+            {% for num in members.paginator.page_range %}
+                {% if members.number == num %}
+                    <span class="current">{{ num }}</span>
+                {% else %}
+                    <a href="?page={{ num }}">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if members.has_next %}
+                <a href="?page={{ members.next_page_number }}">Next ›</a>
+                <a href="?page={{ members.paginator.num_pages }}">Last »</a>
+            {% endif %}
+        </div>
+    {% endif %}
+{% else %}
+    <div class="table-container">
+        <div class="no-members">
+            <i class="fas fa-users" style="font-size: 48px; opacity: 0.3; display: block; margin-bottom: 16px;"></i>
+            {% if search_query %}
+                <p>Tidak ada member yang cocok dengan pencarian "{{ search_query }}"</p>
+            {% else %}
+                <p>Belum ada data member</p>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

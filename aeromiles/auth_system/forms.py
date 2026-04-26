@@ -151,3 +151,119 @@ class StaffRegistrationForm(UserCreationForm):
             )
         
         return user
+
+
+class AddMemberForm(UserCreationForm):
+    """Form untuk Staff menambahkan Member baru"""
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Email'
+        })
+    )
+    first_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Depan'
+        })
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Belakang'
+        })
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nomor HP'
+        })
+    )
+    
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'first_name', 'last_name', 'password1', 'password2')
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Username'})
+        self.fields['password1'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Password'})
+        self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Konfirmasi Password'})
+    
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data['first_name']
+        user.last_name = self.cleaned_data['last_name']
+        
+        if commit:
+            user.save()
+            Member.objects.create(
+                user=user,
+                member_id=Member.generate_member_id(),
+                phone_number=self.cleaned_data.get('phone_number', '')
+            )
+        
+        return user
+
+
+class EditMemberForm(forms.ModelForm):
+    """Form untuk Staff mengedit data Member"""
+    first_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Depan'
+        })
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Belakang'
+        })
+    )
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Email'
+        })
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nomor HP'
+        })
+    )
+    
+    class Meta:
+        model = Member
+        fields = ('phone_number',)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.user:
+            self.fields['first_name'].initial = self.instance.user.first_name
+            self.fields['last_name'].initial = self.instance.user.last_name
+            self.fields['email'].initial = self.instance.user.email
+    
+    def save(self, commit=True):
+        member = super().save(commit=False)
+        if member.user:
+            member.user.first_name = self.cleaned_data.get('first_name', '')
+            member.user.last_name = self.cleaned_data.get('last_name', '')
+            member.user.email = self.cleaned_data.get('email', '')
+            if commit:
+                member.user.save()
+        
+        if commit:
+            member.save()
+        
+        return member

@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Member - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    .form-header {
+        margin-bottom: 32px;
+    }
+
+    .form-header h1 {
+        font-size: 28px;
+        font-weight: 800;
+        color: #1d2f47;
+        margin: 0 0 8px 0;
+    }
+
+    .form-header p {
+        color: #64748b;
+        font-size: 14px;
+        margin: 0;
+    }
+
+    .member-info {
+        background: #f8fbff;
+        border: 1px solid #d8e0ea;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 24px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .member-info-item {
+        font-size: 13px;
+    }
+
+    .member-info-label {
+        color: #64748b;
+        font-weight: 600;
+    }
+
+    .member-info-value {
+        color: #1d2f47;
+        margin-top: 4px;
+    }
+
+    .form-card {
+        background: white;
+        border: 1px solid #d8e0ea;
+        border-radius: 18px;
+        padding: 32px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #27384d;
+        font-size: 13px;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        border: 1px solid #d8e0ea;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 14px;
+        background: #fbfdff;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #8fb1df;
+        box-shadow: 0 0 0 0.2rem rgba(31, 90, 166, 0.14);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .errorlist {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .errorlist li {
+        color: #b42318;
+        font-size: 12px;
+        margin-top: 6px;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 12px;
+        margin-top: 28px;
+    }
+
+    .btn-submit {
+        flex: 1;
+        padding: 14px 20px;
+        background: #3b6ea8;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .btn-submit:hover {
+        background: #315f92;
+    }
+
+    .btn-cancel {
+        flex: 1;
+        padding: 14px 20px;
+        background: #e7edf5;
+        color: #1d2f47;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+        background: #d8e0ea;
+        text-decoration: none;
+        color: #1d2f47;
+    }
+
+    .alert {
+        padding: 14px 16px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .alert-danger {
+        background: #fee;
+        color: #c82333;
+        border: 1px solid #f5c6cb;
+    }
+
+    @media (max-width: 768px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .member-info {
+            grid-template-columns: 1fr;
+        }
+
+        .form-card {
+            padding: 24px;
+        }
+
+        .button-group {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h1>Edit Data Member</h1>
+        <p>Perbarui informasi profil Member</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if member %}
+        <div class="member-info">
+            <div class="member-info-item">
+                <div class="member-info-label">ID Member</div>
+                <div class="member-info-value">{{ member.member_id }}</div>
+            </div>
+            <div class="member-info-item">
+                <div class="member-info-label">Total Miles</div>
+                <div class="member-info-value">{{ member.total_miles|floatformat:0 }}</div>
+            </div>
+            <div class="member-info-item">
+                <div class="member-info-label">Status</div>
+                <div class="member-info-value">{% if member.is_active %}Aktif{% else %}Tidak Aktif{% endif %}</div>
+            </div>
+            <div class="member-info-item">
+                <div class="member-info-label">Bergabung Sejak</div>
+                <div class="member-info-value">{{ member.created_at|date:"d M Y" }}</div>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="form-card">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="id_first_name">Nama Depan</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                        <ul class="errorlist">{{ form.first_name.errors }}</ul>
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <label for="id_last_name">Nama Belakang</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                        <ul class="errorlist">{{ form.last_name.errors }}</ul>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="id_email">Email</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <ul class="errorlist">{{ form.email.errors }}</ul>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="id_phone_number">Nomor HP</label>
+                {{ form.phone_number }}
+                {% if form.phone_number.errors %}
+                    <ul class="errorlist">{{ form.phone_number.errors }}</ul>
+                {% endif %}
+            </div>
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ form.non_field_errors.0 }}
+                </div>
+            {% endif %}
+
+            <div class="button-group">
+                <button type="submit" class="btn-submit">Simpan Perubahan</button>
+                <a href="{% url 'auth_system:manage_members_list' %}" class="btn-cancel">Batal</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
