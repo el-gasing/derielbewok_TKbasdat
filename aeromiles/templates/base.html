@@ -171,7 +171,7 @@
                         <a href="#" class="nav-link">Laporan Transaksi</a>
                         <a href="#" class="nav-link">Pengaturan Profil</a>
                     {% else %}
-                        <a href="#" class="nav-link">Identitas Saya</a>
+                        <a href="{% url 'auth_system:member_identities_list' %}" class="nav-link">Identitas Saya</a>
                         <a href="#" class="nav-link">Klaim Miles</a>
                         <a href="#" class="nav-link">Transfer Miles</a>
                         <a href="#" class="nav-link">Redeem Hadiah</a>

@@ -16,4 +16,10 @@ urlpatterns = [
     path('kelola-member/tambah/', views.add_member, name='add_member'),
     path('kelola-member/edit/<str:member_id>/', views.edit_member, name='edit_member'),
     path('kelola-member/hapus/<str:member_id>/', views.delete_member, name='delete_member'),
+    
+    # Member Identity Management (Member only)
+    path('identitas/', views.member_identities_list, name='member_identities_list'),
+    path('identitas/tambah/', views.add_member_identity, name='add_member_identity'),
+    path('identitas/edit/<int:identity_id>/', views.edit_member_identity, name='edit_member_identity'),
+    path('identitas/hapus/<int:identity_id>/', views.delete_member_identity, name='delete_member_identity'),
 ]

@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
-from .models import Member, Staff
+from .models import Member, Staff, Identity
 
 
 class LoginForm(AuthenticationForm):
@@ -267,3 +267,56 @@ class EditMemberForm(forms.ModelForm):
             member.save()
         
         return member
+
+
+class AddIdentityForm(forms.ModelForm):
+    """Form untuk Member menambahkan dokumen identitas baru"""
+    
+    class Meta:
+        model = Identity
+        fields = ('document_number', 'document_type', 'country', 'issue_date', 'expiry_date')
+        widgets = {
+            'document_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nomor Dokumen'
+            }),
+            'document_type': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+            'country': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+            'issue_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'expiry_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+        }
+
+
+class EditIdentityForm(forms.ModelForm):
+    """Form untuk Member mengedit dokumen identitas"""
+    
+    class Meta:
+        model = Identity
+        fields = ('document_type', 'country', 'issue_date', 'expiry_date')
+        widgets = {
+            'document_type': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+            'country': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+            'issue_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'expiry_date': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+        }
+
