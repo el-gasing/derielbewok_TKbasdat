@@ -21,9 +21,9 @@ class MemberAdmin(admin.ModelAdmin):
 
 @admin.register(Staff)
 class StaffAdmin(admin.ModelAdmin):
-    list_display = ('staff_id', 'user', 'department', 'phone_number', 'is_active', 'created_at')
+    list_display = ('staff_id', 'user', 'phone_number', 'is_active', 'created_at')
     search_fields = ('staff_id', 'user__username', 'user__email')
-    list_filter = ('is_active', 'department', 'created_at')
+    list_filter = ('is_active', 'created_at')
     readonly_fields = ('created_at', 'updated_at')
 
 

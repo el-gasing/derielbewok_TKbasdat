@@ -22,4 +22,19 @@ urlpatterns = [
     path('identitas/tambah/', views.add_member_identity, name='add_member_identity'),
     path('identitas/edit/<int:identity_id>/', views.edit_member_identity, name='edit_member_identity'),
     path('identitas/hapus/<int:identity_id>/', views.delete_member_identity, name='delete_member_identity'),
+
+    # Member: Claim Missing Miles
+    path('member/claims/', views.member_claim_list_view, name='member_claim_list'),
+    path('member/claims/add/', views.member_claim_create_view, name='member_claim_create'),
+    path('member/claims/<int:claim_id>/', views.member_claim_detail_view, name='member_claim_detail'),
+    path('member/claims/edit/<int:claim_id>/', views.member_claim_update_view, name='member_claim_update'),
+    path('member/claims/delete/<int:claim_id>/', views.member_claim_delete_view, name='member_claim_delete'),
+
+    # Staff: Claim Management
+    path('staff/claims/', views.staff_claim_list_view, name='staff_claim_list'),
+    path('staff/claims/edit/<int:claim_id>/', views.staff_claim_update_view, name='staff_claim_update'),
+
+    # Member: Transfer Miles
+    path('member/transfer/', views.member_transfer_list_view, name='member_transfer_list'),
+    path('member/transfer/add/', views.member_transfer_create_view, name='member_transfer_create'),
 ]

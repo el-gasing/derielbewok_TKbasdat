@@ -1,0 +1,71 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claim Missing Miles - AeroMiles</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-0">Claim Missing Miles</h2>
+            <small class="text-muted">Member ID: {{ member.member_id }}</small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'auth_system:dashboard' %}" class="btn btn-outline-secondary">Dashboard</a>
+            <a href="{% url 'auth_system:member_claim_create' %}" class="btn btn-primary">+ Buat Claim</a>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>ID Claim</th>
+                        <th>Flight</th>
+                        <th>Tanggal</th>
+                        <th>Miles</th>
+                        <th>Status</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for claim in claims %}
+                        <tr>
+                            <td>{{ claim.claim_id }}</td>
+                            <td>{{ claim.flight_number }}</td>
+                            <td>{{ claim.flight_date }}</td>
+                            <td>{{ claim.miles_amount }}</td>
+                            <td><span class="badge text-bg-info">{{ claim.get_status_display }}</span></td>
+                            <td class="d-flex gap-2">
+                                <a href="{% url 'auth_system:member_claim_detail' claim.id %}" class="btn btn-sm btn-outline-primary">Detail</a>
+                                <a href="{% url 'auth_system:member_claim_update' claim.id %}" class="btn btn-sm btn-outline-warning">Edit</a>
+                                <form method="post" action="{% url 'auth_system:member_claim_delete' claim.id %}" onsubmit="return confirm('Hapus claim ini?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">Belum ada claim missing miles.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="{% static 'auth_system/js/app.js' %}" defer></script>
+</body>
+</html>

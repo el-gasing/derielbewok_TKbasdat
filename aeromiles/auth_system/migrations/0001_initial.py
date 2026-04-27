@@ -104,7 +104,6 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('staff_id', models.CharField(max_length=50, unique=True)),
-                ('department', models.CharField(choices=[('customer_service', 'Customer Service'), ('operations', 'Operations'), ('finance', 'Finance'), ('marketing', 'Marketing'), ('admin', 'Admin')], max_length=30)),
                 ('phone_number', models.CharField(blank=True, max_length=20, null=True)),
                 ('is_active', models.BooleanField(default=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),

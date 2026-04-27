@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Claim Staff - AeroMiles</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-4" style="max-width: 760px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Update Claim {{ claim.claim_id }}</h2>
+        <a href="{% url 'auth_system:staff_claim_list' %}" class="btn btn-outline-secondary">Kembali</a>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <h5>Informasi Claim</h5>
+            <p class="mb-1"><strong>Member:</strong> {{ claim.member.member_id }} - {{ claim.member.user.username }}</p>
+            <p class="mb-1"><strong>Flight:</strong> {{ claim.flight_number }} ({{ claim.flight_date }})</p>
+            <p class="mb-1"><strong>Miles:</strong> {{ claim.miles_amount }}</p>
+            <p class="mb-1"><strong>Alasan:</strong> {{ claim.reason }}</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary">Simpan Update</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script src="{% static 'auth_system/js/app.js' %}" defer></script>
+</body>
+</html>
