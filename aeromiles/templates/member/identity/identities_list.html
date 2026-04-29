@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+
+{% block title %}Identitas Saya - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+    .page-header h1 {
+        font-size: 28px;
+        font-weight: 800;
+        color: #1d2f47;
+        margin: 0;
+    }
+
+    .page-header p {
+        color: #64748b;
+        font-size: 14px;
+        margin: 0;
+    }
+
+    .btn-tambah {
+        padding: 12px 20px;
+        background: #3b6ea8;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s ease;
+    }
+
+    .btn-tambah:hover {
+        background: #315f92;
+        text-decoration: none;
+        color: white;
+    }
+
+    .identities-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border: 1px solid #d8e0ea;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .identities-table thead {
+        background: #f3f6fa;
+        border-bottom: 2px solid #d8e0ea;
+    }
+
+    .identities-table th {
+        padding: 16px;
+        text-align: left;
+        font-weight: 700;
+        font-size: 13px;
+        color: #27384d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .identities-table td {
+        padding: 16px;
+        border-bottom: 1px solid #e7edf5;
+        font-size: 14px;
+        color: #475569;
+    }
+
+    .identities-table tbody tr:hover {
+        background: #f8fbff;
+    }
+
+    .identities-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .status-active {
+        background: #d4f4dd;
+        color: #0f7938;
+    }
+
+    .status-expired {
+        background: #fee;
+        color: #c82333;
+    }
+
+    .status-inactive {
+        background: #f0f4f8;
+        color: #64748b;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-edit, .btn-delete {
+        padding: 8px 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-edit {
+        background: #e8f0f8;
+        color: #3b6ea8;
+    }
+
+    .btn-edit:hover {
+        background: #d8e5f0;
+    }
+
+    .btn-delete {
+        background: #fee;
+        color: #c82333;
+    }
+
+    .btn-delete:hover {
+        background: #fdd;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #64748b;
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .empty-state h3 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1d2f47;
+        margin: 16px 0 8px 0;
+    }
+
+    .empty-state p {
+        margin: 0 0 24px 0;
+        font-size: 14px;
+    }
+
+    .alert {
+        padding: 14px 16px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .alert-success {
+        background: #d4f4dd;
+        color: #0f7938;
+        border: 1px solid #a3e8b5;
+    }
+
+    .alert-danger {
+        background: #fee;
+        color: #c82333;
+        border: 1px solid #f5c6cb;
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 40px;
+        border-radius: 16px;
+        max-width: 450px;
+        width: 90%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-header {
+        margin-bottom: 24px;
+    }
+
+    .modal-header h2 {
+        font-size: 20px;
+        font-weight: 800;
+        color: #1d2f47;
+        margin: 0 0 8px 0;
+    }
+
+    .modal-header p {
+        color: #64748b;
+        font-size: 14px;
+        margin: 0;
+    }
+
+    .modal-body {
+        margin-bottom: 32px;
+    }
+
+    .modal-body p {
+        color: #475569;
+        font-size: 14px;
+        margin: 0;
+        line-height: 1.6;
+    }
+
+    .modal-footer {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn-modal {
+        flex: 1;
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: none;
+    }
+
+    .btn-modal-cancel {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #d8e0ea;
+    }
+
+    .btn-modal-cancel:hover {
+        background: #e2e8f0;
+    }
+
+    .btn-modal-delete {
+        background: #c82333;
+        color: white;
+    }
+
+    .btn-modal-delete:hover {
+        background: #a81d2a;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .btn-tambah {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .identities-table {
+            font-size: 12px;
+        }
+
+        .identities-table th,
+        .identities-table td {
+            padding: 12px;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div>
+            <h1>Identitas Saya</h1>
+            <p>Kelola dokumen identitas Anda</p>
+        </div>
+        <a href="{% url 'auth_system:add_member_identity' %}" class="btn-tambah">
+            <i class="fa-solid fa-plus"></i> Tambah Identitas
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if identities %}
+        <table class="identities-table">
+            <thead>
+                <tr>
+                    <th>No. Dokumen</th>
+                    <th>Jenis</th>
+                    <th>Negara Penerbit</th>
+                    <th>Tanggal Terbit</th>
+                    <th>Tanggal Habis</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for identity in identities %}
+                    <tr>
+                        <td>{{ identity.document_number }}</td>
+                        <td>{{ identity.get_document_type_display }}</td>
+                        <td>{{ identity.get_country_display }}</td>
+                        <td>{{ identity.issue_date|date:"d/m/Y" }}</td>
+                        <td>{{ identity.expiry_date|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if identity.is_expired %}
+                                <span class="status-badge status-expired">Kadaluarsa</span>
+                            {% else %}
+                                <span class="status-badge status-active">Aktif</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'auth_system:edit_member_identity' identity.id %}" class="btn-edit">
+                                    <i class="fa-solid fa-pen"></i> Edit
+                                </a>
+                                <button type="button" class="btn-delete" onclick="openDeleteModal({{ identity.id }}, '{{ identity.document_number }}')">
+                                    <i class="fa-solid fa-trash"></i> Hapus
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fa-solid fa-id-card"></i>
+            </div>
+            <h3>Belum Ada Identitas</h3>
+            <p>Anda belum menambahkan dokumen identitas. Tambahkan sekarang untuk melengkapi profil Anda.</p>
+            <a href="{% url 'auth_system:add_member_identity' %}" class="btn-tambah">
+                <i class="fa-solid fa-plus"></i> Tambah Identitas Pertama
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Hapus Identitas?</h2>
+            <p>Tindakan ini tidak dapat dibatalkan.</p>
+        </div>
+        <div class="modal-body">
+            <p>Apakah Anda yakin ingin menghapus dokumen identitas dengan nomor <strong id="deleteDocNumber"></strong>? Semua data terkait akan dihapus secara permanen.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-modal btn-modal-cancel" onclick="closeDeleteModal()">Batal</button>
+            <form id="deleteForm" method="post" style="flex: 1;">
+                {% csrf_token %}
+                <button type="submit" class="btn-modal btn-modal-delete">Hapus</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openDeleteModal(identityId, docNumber) {
+        const modal = document.getElementById('deleteModal');
+        const deleteForm = document.getElementById('deleteForm');
+        const deleteDocNumber = document.getElementById('deleteDocNumber');
+        
+        deleteForm.action = "{% url 'auth_system:delete_member_identity' 0 %}".replace('0', identityId);
+        deleteDocNumber.textContent = docNumber;
+        modal.classList.add('show');
+    }
+    
+    function closeDeleteModal() {
+        const modal = document.getElementById('deleteModal');
+        modal.classList.remove('show');
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('deleteModal');
+        if (event.target === modal) {
+            closeDeleteModal();
+        }
+    }
+</script>
+{% endblock %}

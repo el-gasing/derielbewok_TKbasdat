@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Login - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .content-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 150px);
+        padding: 20px 0;
+    }
+
+    .login-container {
+        width: 100%;
+        max-width: 520px;
+    }
+
+    .login-card {
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-radius: 18px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+
+    .login-header {
+        padding: 34px 28px 16px;
+        text-align: center;
+    }
+
+    .hero-badge {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 16px;
+        border-radius: 16px;
+        background: var(--accent);
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 8px 22px rgba(59, 110, 168, 0.24);
+    }
+
+    .login-header h1 {
+        margin: 0;
+        font-size: 30px;
+        font-weight: 800;
+        color: #1d2f47;
+    }
+
+    .login-header p {
+        margin: 10px 0 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    .login-form {
+        padding: 24px 28px 30px;
+    }
+
+    .section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #21344d;
+        margin-bottom: 4px;
+    }
+
+    .section-subtitle {
+        color: #64748b;
+        font-size: 13px;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 18px;
+    }
+
+    .form-label {
+        margin-bottom: 8px;
+        display: block;
+        font-weight: 600;
+        color: #27384d;
+        font-size: 13px;
+    }
+
+    .form-control {
+        width: 100%;
+        border: 1px solid #d8e0ea;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 14px;
+        background: #fdfdff;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-control:focus {
+        border-color: #8fb1df;
+        box-shadow: 0 0 0 0.2rem rgba(31, 90, 166, 0.14);
+    }
+
+    .btn-login {
+        width: 100%;
+        padding: 14px;
+        margin-top: 10px;
+        border: none;
+        border-radius: 12px;
+        background: var(--accent);
+        color: white;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .btn-login:hover {
+        background: #315f92;
+    }
+
+    .register-link {
+        text-align: center;
+        margin-top: 18px;
+        font-size: 14px;
+        color: #64748b;
+    }
+
+    .register-link a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 700;
+    }
+
+    .register-link a:hover {
+        text-decoration: underline;
+    }
+
+    .alert {
+        border-radius: 12px;
+        margin-bottom: 18px;
+    }
+
+    .error-message {
+        color: #b42318;
+        font-size: 13px;
+        margin-top: 6px;
+    }
+
+    @media (max-width: 768px) {
+        .login-form {
+            padding: 20px 20px 26px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrap">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="hero-badge">✈</div>
+                <h1>Login</h1>
+                <p>Sistem Manajemen Miles Penerbangan</p>
+            </div>
+            <div class="login-form">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="section-title">Masuk ke akun Anda</div>
+                <div class="section-subtitle">Gunakan username atau email dan password yang terdaftar</div>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="id_username" class="form-label">Username atau Email</label>
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                            <div class="error-message">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="id_password" class="form-label">Password</label>
+                        {{ form.password }}
+                        {% if form.password.errors %}
+                            <div class="error-message">{{ form.password.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors.0 }}
+                        </div>
+                    {% endif %}
+                    <button type="submit" class="btn-login">Login</button>
+                </form>
+
+                <div class="register-link">
+                    Belum punya akun? <a href="{% url 'auth_system:register_member' %}">Daftar di sini</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
