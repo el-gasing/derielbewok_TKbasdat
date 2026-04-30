@@ -40,4 +40,7 @@ urlpatterns = [
 
     # Member: Redeem Hadiah
     path('member/redeem/', views.member_redeem_view, name='member_redeem'),
+
+    # Member: Award Miles Package
+    path('member/package/', views.member_package_view, name='member_package'),
 ]

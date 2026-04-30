@@ -570,6 +570,47 @@ def member_redeem_view(request):
     return render(request, 'member/redeem/member_redeem.html', context)
 
 
+@login_required(login_url='auth_system:login')
+def member_package_view(request):
+    member = _get_member(request.user)
+    if not member:
+        messages.error(request, 'Halaman ini hanya untuk member.')
+        return redirect('auth_system:dashboard')
+
+    packages = [
+        {
+            'code': 'AMP-001',
+            'miles': 1000,
+            'price': 150000,
+            'label': 'Starter',
+        },
+        {
+            'code': 'AMP-002',
+            'miles': 5000,
+            'price': 650000,
+            'label': 'Traveler',
+        },
+        {
+            'code': 'AMP-003',
+            'miles': 10000,
+            'price': 1200000,
+            'label': 'Explorer',
+        },
+        {
+            'code': 'AMP-004',
+            'miles': 25000,
+            'price': 2750000,
+            'label': 'Priority',
+        },
+    ]
+
+    context = {
+        'member': member,
+        'packages': packages,
+    }
+    return render(request, 'member/package/member_package.html', context)
+
+
 @require_http_methods(["GET", "POST"])
 @login_required(login_url='auth_system:login')
 def member_transfer_create_view(request):

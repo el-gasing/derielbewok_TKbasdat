@@ -175,7 +175,7 @@
                         <a href="{% url 'auth_system:member_claim_list' %}" class="nav-link">Klaim Miles</a>
                         <a href="{% url 'auth_system:member_transfer_list' %}" class="nav-link">Transfer Miles</a>
                         <a href="{% url 'auth_system:member_redeem' %}" class="nav-link {% if request.resolver_match.url_name == 'member_redeem' %}active{% endif %}">Redeem Hadiah</a>
-                        <a href="#" class="nav-link">Beli Package</a>
+                        <a href="{% url 'auth_system:member_package' %}" class="nav-link {% if request.resolver_match.url_name == 'member_package' %}active{% endif %}">Beli Package</a>
                         <a href="#" class="nav-link">Info Tier</a>
                         <a href="#" class="nav-link">Pengaturan Profil</a>
                     {% endif %}
