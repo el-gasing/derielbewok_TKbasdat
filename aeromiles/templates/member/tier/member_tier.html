@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Info Tier - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tier-page {
+        max-width: 880px;
+        margin: 0 auto;
+    }
+
+    .tier-header {
+        margin-bottom: 24px;
+    }
+
+    .tier-header h1 {
+        margin: 0 0 8px;
+        color: #1d2f47;
+        font-size: 28px;
+        font-weight: 800;
+    }
+
+    .tier-header p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    .progress-card {
+        margin-bottom: 22px;
+        padding: 22px;
+        background: #ffffff;
+        border: 2px solid #5aaee8;
+        border-radius: 14px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .progress-title {
+        margin-bottom: 14px;
+        color: #1d2f47;
+        font-size: 16px;
+        font-weight: 800;
+    }
+
+    .progress-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 7px;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .progress-track {
+        width: 100%;
+        height: 9px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #d8e0ea;
+    }
+
+    .progress-fill {
+        width: {{ progress_percent }}%;
+        height: 100%;
+        border-radius: inherit;
+        background: #0b4f93;
+    }
+
+    .tier-list {
+        display: grid;
+        gap: 18px;
+    }
+
+    .tier-card {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 16px;
+        padding: 22px;
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-radius: 14px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .tier-card.current {
+        border: 2px solid #2f9bd7;
+        background: #fffdf7;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+    }
+
+    .tier-icon {
+        width: 46px;
+        height: 46px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        background: #e8f0f8;
+        color: #1d5a91;
+        font-size: 18px;
+    }
+
+    .tier-card.current .tier-icon {
+        background: #f4c541;
+        color: #1d2f47;
+    }
+
+    .tier-card[data-tier="blue"] .tier-icon {
+        background: #2f9bd7;
+        color: #ffffff;
+    }
+
+    .tier-card[data-tier="platinum"] .tier-icon {
+        background: #111827;
+        color: #ffffff;
+    }
+
+    .tier-name-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 3px;
+    }
+
+    .tier-name-row h2 {
+        margin: 0;
+        color: #1d2f47;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .current-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 24px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: #2f9bd7;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .tier-rule {
+        margin: 0 0 22px;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .benefit-title {
+        margin-bottom: 8px;
+        color: #1d2f47;
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    .benefit-list {
+        display: grid;
+        gap: 7px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .benefit-list li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #475569;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .benefit-list i {
+        color: #2f9e44;
+        font-size: 13px;
+    }
+
+    @media (max-width: 768px) {
+        .tier-card {
+            grid-template-columns: 1fr;
+        }
+
+        .progress-meta {
+            flex-direction: column;
+            gap: 5px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tier-page">
+    <div class="tier-header">
+        <h1>Info Tier</h1>
+        <p>Lihat posisi tier, progress miles, dan benefit yang tersedia untuk member AeroMiles.</p>
+    </div>
+
+    <section class="progress-card">
+        <div class="progress-title">
+            {% if next_tier %}
+                Progress ke Tier Berikutnya: {{ next_tier.name }}
+            {% else %}
+                Anda sudah berada di tier tertinggi
+            {% endif %}
+        </div>
+        <div class="progress-meta">
+            <span>Total Miles</span>
+            <span>{{ member.total_miles|floatformat:0 }} / {{ progress_target|floatformat:0 }}</span>
+        </div>
+        <div class="progress-track" aria-label="Progress tier">
+            <div class="progress-fill"></div>
+        </div>
+    </section>
+
+    <section class="tier-list">
+        {% for tier in tiers %}
+            <article class="tier-card {% if tier.code == current_tier.code %}current{% endif %}" data-tier="{{ tier.code }}">
+                <div class="tier-icon">
+                    <i class="fa-solid fa-award"></i>
+                </div>
+                <div>
+                    <div class="tier-name-row">
+                        <h2>{{ tier.name }}</h2>
+                        {% if tier.code == current_tier.code %}
+                            <span class="current-badge">Tier Anda</span>
+                        {% endif %}
+                    </div>
+                    <p class="tier-rule">Min. {{ tier.flight_min }} penerbangan · Min. {{ tier.miles_min|floatformat:0 }} miles</p>
+
+                    <div class="benefit-title">Keuntungan:</div>
+                    <ul class="benefit-list">
+                        {% for benefit in tier.benefits %}
+                            <li>
+                                <i class="fa-regular fa-circle-check"></i>
+                                {{ benefit }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </article>
+        {% endfor %}
+    </section>
+</div>
+{% endblock %}

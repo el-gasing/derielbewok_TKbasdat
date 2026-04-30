@@ -5,7 +5,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.utils.html import strip_tags
-from .models import ClaimMissingMiles, Maskapai, Member, Staff
+from .models import ClaimMissingMiles, Identity, Maskapai, Member, Staff
 
 
 def _sanitize_text(value, max_length=None):
@@ -124,6 +124,14 @@ class LoginForm(AuthenticationForm):
     class Meta:
         model = User
         fields = ('username', 'password')
+
+    def clean_username(self):
+        username = self.cleaned_data.get('username', '').strip()
+        if '@' in username:
+            user = User.objects.filter(email__iexact=username).first()
+            if user:
+                return user.username
+        return username
 
 
 class MemberRegistrationForm(UserCreationForm):
@@ -435,3 +443,27 @@ class TransferMilesForm(forms.Form):
         if miles_amount and self.from_member.total_miles < miles_amount:
             self.add_error('miles_amount', 'Total miles tidak mencukupi untuk transfer ini.')
         return cleaned_data
+
+
+class IdentityForm(forms.ModelForm):
+    class Meta:
+        model = Identity
+        fields = ('document_number', 'document_type', 'country', 'issue_date', 'expiry_date')
+        widgets = {
+            'document_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor dokumen'}),
+            'document_type': forms.Select(attrs={'class': 'form-select'}),
+            'country': forms.Select(attrs={'class': 'form-select'}),
+            'issue_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'expiry_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+
+    def clean_document_number(self):
+        return _sanitize_text(self.cleaned_data.get('document_number'), max_length=100)
+
+    def clean(self):
+        cleaned = super().clean()
+        issue_date = cleaned.get('issue_date')
+        expiry_date = cleaned.get('expiry_date')
+        if issue_date and expiry_date and expiry_date <= issue_date:
+            self.add_error('expiry_date', 'Tanggal habis harus lebih besar dari tanggal terbit.')
+        return cleaned

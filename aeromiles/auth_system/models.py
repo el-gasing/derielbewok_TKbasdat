@@ -218,3 +218,78 @@ class TransferMiles(models.Model):
     class Meta:
         verbose_name = 'Transfer Miles'
         verbose_name_plural = 'Transfer Miles'
+
+
+class Identity(models.Model):
+    DOCUMENT_TYPE_CHOICES = [
+        ('passport', 'Passport'),
+        ('ktp', 'KTP'),
+        ('sim', 'SIM'),
+        ('other', 'Lainnya'),
+    ]
+
+    COUNTRY_CHOICES = [
+        ('ID', 'Indonesia'),
+        ('SG', 'Singapura'),
+        ('MY', 'Malaysia'),
+        ('TH', 'Thailand'),
+        ('PH', 'Filipina'),
+        ('VN', 'Vietnam'),
+        ('TW', 'Taiwan'),
+        ('HK', 'Hong Kong'),
+        ('KR', 'Korea'),
+        ('JP', 'Jepang'),
+        ('CN', 'China'),
+        ('AU', 'Australia'),
+        ('NZ', 'New Zealand'),
+        ('US', 'Amerika Serikat'),
+        ('UK', 'Inggris'),
+        ('DE', 'Jerman'),
+        ('FR', 'Prancis'),
+        ('IT', 'Italia'),
+        ('ES', 'Spanyol'),
+        ('NL', 'Belanda'),
+        ('CH', 'Swiss'),
+        ('AT', 'Austria'),
+        ('SE', 'Swedia'),
+        ('NO', 'Norwegia'),
+        ('DK', 'Denmark'),
+        ('FI', 'Finlandia'),
+        ('PL', 'Polandia'),
+        ('CZ', 'Czech'),
+        ('GR', 'Yunani'),
+        ('PT', 'Portugis'),
+        ('BE', 'Belgia'),
+        ('BR', 'Brazil'),
+        ('MX', 'Meksiko'),
+        ('CA', 'Kanada'),
+        ('IN', 'India'),
+        ('PK', 'Pakistan'),
+        ('BD', 'Bangladesh'),
+        ('AE', 'UAE'),
+        ('SA', 'Arab Saudi'),
+        ('QA', 'Qatar'),
+        ('KW', 'Kuwait'),
+        ('EG', 'Mesir'),
+        ('ZA', 'Afrika Selatan'),
+        ('NG', 'Nigeria'),
+        ('KE', 'Kenya'),
+    ]
+
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='identities')
+    document_number = models.CharField(max_length=100)
+    document_type = models.CharField(max_length=20, choices=DOCUMENT_TYPE_CHOICES)
+    country = models.CharField(max_length=2, choices=COUNTRY_CHOICES)
+    issue_date = models.DateField()
+    expiry_date = models.DateField()
+    is_expired = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.member} - {self.document_number}"
+
+    class Meta:
+        verbose_name = 'Identity'
+        verbose_name_plural = 'Identities'
+        unique_together = (('member', 'document_number'),)

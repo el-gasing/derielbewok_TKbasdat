@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}Beli Award Miles Package - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .package-page {
+        max-width: 1060px;
+        margin: 0 auto;
+    }
+
+    .package-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 26px;
+    }
+
+    .package-header h1 {
+        margin: 0 0 8px;
+        color: #1d2f47;
+        font-size: 28px;
+        font-weight: 800;
+    }
+
+    .package-header p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    .miles-summary {
+        min-width: 230px;
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-radius: 14px;
+        padding: 16px 18px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .miles-summary span {
+        display: block;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+    }
+
+    .miles-summary strong {
+        color: #1d2f47;
+        font-size: 26px;
+        line-height: 1;
+    }
+
+    .package-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+    }
+
+    .package-card {
+        position: relative;
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .package-card:hover {
+        border-color: #b9c8da;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+    }
+
+    .package-icon {
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        border-radius: 12px;
+        background: #e8f7ff;
+        color: #20a4df;
+        font-size: 18px;
+    }
+
+    .package-code {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 28px;
+        padding: 6px 11px;
+        border-radius: 999px;
+        background: #1d5a91;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .package-miles {
+        margin-bottom: 4px;
+        color: #1d2f47;
+        font-size: 28px;
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .package-card p {
+        margin: 0 0 14px;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .package-price {
+        margin-bottom: 18px;
+        color: #1d5a91;
+        font-size: 17px;
+        font-weight: 800;
+    }
+
+    .package-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 18px;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .btn-buy {
+        width: 100%;
+        min-height: 42px;
+        border: none;
+        border-radius: 10px;
+        background: #1d5a91;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .btn-buy:hover {
+        background: #164a78;
+    }
+
+    .purchase-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(15, 23, 42, 0.62);
+    }
+
+    .purchase-modal.show {
+        display: flex;
+    }
+
+    .purchase-modal-content {
+        width: min(440px, 100%);
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+        padding: 28px;
+    }
+
+    .modal-header-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 10px;
+    }
+
+    .purchase-modal-content h2 {
+        margin: 0;
+        color: #1d2f47;
+        font-size: 21px;
+        font-weight: 800;
+    }
+
+    .btn-close-modal {
+        width: 30px;
+        height: 30px;
+        border: none;
+        border-radius: 999px;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+    }
+
+    .btn-close-modal:hover {
+        background: #f1f5f9;
+    }
+
+    .purchase-modal-content > p {
+        margin: 0 0 20px;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+    .modal-summary {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 22px;
+        padding: 14px;
+        border: 1px solid #d8e0ea;
+        border-radius: 12px;
+        background: #f8fbff;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: #475569;
+        font-size: 14px;
+    }
+
+    .summary-row strong {
+        color: #1d2f47;
+        text-align: right;
+    }
+
+    .summary-row .miles-plus {
+        color: #0f7938;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .btn-modal {
+        min-height: 40px;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .btn-modal-cancel {
+        border: 1px solid #d8e0ea;
+        background: #ffffff;
+        color: #475569;
+    }
+
+    .btn-modal-confirm {
+        border: none;
+        background: #1d5a91;
+        color: #ffffff;
+    }
+
+    .btn-modal-confirm:hover {
+        background: #164a78;
+    }
+
+    @media (max-width: 768px) {
+        .package-header {
+            flex-direction: column;
+        }
+
+        .miles-summary {
+            width: 100%;
+        }
+
+        .package-miles {
+            font-size: 24px;
+        }
+
+        .modal-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="package-page">
+    <div class="package-header">
+        <div>
+            <h1>Beli Award Miles Package</h1>
+            <p>Pilih paket award miles tambahan yang tersedia untuk akun Anda.</p>
+        </div>
+        <div class="miles-summary">
+            <span>Award Miles Saat Ini</span>
+            <strong>{{ member.total_miles|floatformat:0 }}</strong>
+        </div>
+    </div>
+
+    <div class="package-grid">
+        {% for package in packages %}
+            <article class="package-card">
+                <span class="package-code">{{ package.code }}</span>
+                <div class="package-icon">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                </div>
+                <div class="package-miles">{{ package.miles|floatformat:0 }}</div>
+                <p>Award Miles</p>
+                <div class="package-price">Rp {{ package.price|floatformat:0 }}</div>
+                <div class="package-label">
+                    <i class="fa-solid fa-layer-group"></i>
+                    {{ package.label }}
+                </div>
+                <button
+                    type="button"
+                    class="btn-buy"
+                    data-package-code="{{ package.code }}"
+                    data-package-miles="{{ package.miles|floatformat:0 }}"
+                    data-package-price="{{ package.price|floatformat:0 }}"
+                >
+                    Beli
+                </button>
+            </article>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="purchaseModal" class="purchase-modal" aria-hidden="true">
+    <div class="purchase-modal-content" role="dialog" aria-modal="true" aria-labelledby="purchaseModalTitle">
+        <div class="modal-header-row">
+            <h2 id="purchaseModalTitle">Konfirmasi Pembelian</h2>
+            <button type="button" class="btn-close-modal" id="closePurchaseModal" aria-label="Tutup">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <p>Anda akan membeli paket miles berikut:</p>
+        <div class="modal-summary">
+            <div class="summary-row">
+                <span>ID Paket</span>
+                <strong id="modalPackageCode"></strong>
+            </div>
+            <div class="summary-row">
+                <span>Award Miles</span>
+                <strong class="miles-plus" id="modalPackageMiles"></strong>
+            </div>
+            <div class="summary-row">
+                <span>Harga</span>
+                <strong id="modalPackagePrice"></strong>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-modal btn-modal-cancel" id="cancelPurchaseModal">Batal</button>
+            <button type="button" class="btn-modal btn-modal-confirm">Konfirmasi Pembelian</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const purchaseModal = document.getElementById('purchaseModal');
+    const modalPackageCode = document.getElementById('modalPackageCode');
+    const modalPackageMiles = document.getElementById('modalPackageMiles');
+    const modalPackagePrice = document.getElementById('modalPackagePrice');
+    const closePurchaseModal = document.getElementById('closePurchaseModal');
+    const cancelPurchaseModal = document.getElementById('cancelPurchaseModal');
+
+    document.querySelectorAll('.btn-buy').forEach((button) => {
+        button.addEventListener('click', () => {
+            modalPackageCode.textContent = button.dataset.packageCode;
+            modalPackageMiles.textContent = `+${button.dataset.packageMiles}`;
+            modalPackagePrice.textContent = `Rp ${button.dataset.packagePrice}`;
+            purchaseModal.classList.add('show');
+            purchaseModal.setAttribute('aria-hidden', 'false');
+        });
+    });
+
+    function hidePurchaseModal() {
+        purchaseModal.classList.remove('show');
+        purchaseModal.setAttribute('aria-hidden', 'true');
+    }
+
+    closePurchaseModal.addEventListener('click', hidePurchaseModal);
+    cancelPurchaseModal.addEventListener('click', hidePurchaseModal);
+    purchaseModal.addEventListener('click', (event) => {
+        if (event.target === purchaseModal) {
+            hidePurchaseModal();
+        }
+    });
+</script>
+{% endblock %}

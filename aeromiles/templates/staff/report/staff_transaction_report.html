@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan Transaksi - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-page {
+        max-width: 1120px;
+        margin: 0 auto;
+    }
+
+    .report-header {
+        margin-bottom: 24px;
+    }
+
+    .report-header h1 {
+        margin: 0 0 8px;
+        color: #1d2f47;
+        font-size: 28px;
+        font-weight: 800;
+    }
+
+    .report-header p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+
+    .summary-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-height: 88px;
+        padding: 18px;
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-radius: 14px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .summary-icon {
+        width: 40px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        font-size: 16px;
+    }
+
+    .summary-icon.blue {
+        background: #e8f0f8;
+        color: #1d5a91;
+    }
+
+    .summary-icon.red {
+        background: #fff1f2;
+        color: #dc3545;
+    }
+
+    .summary-icon.green {
+        background: #e8f7ec;
+        color: #2f9e44;
+    }
+
+    .summary-card span {
+        display: block;
+        margin-bottom: 4px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .summary-card strong {
+        color: #1d2f47;
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .report-tabs {
+        display: inline-flex;
+        gap: 6px;
+        padding: 5px;
+        margin-bottom: 16px;
+        background: #eaf0f7;
+        border: 1px solid #d8e0ea;
+        border-radius: 12px;
+    }
+
+    .report-tab {
+        border: none;
+        border-radius: 9px;
+        padding: 9px 14px;
+        background: transparent;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .report-tab.active {
+        background: #ffffff;
+        color: #1d2f47;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    }
+
+    .filter-row {
+        margin-bottom: 16px;
+    }
+
+    .filter-row select {
+        min-width: 180px;
+        height: 40px;
+        padding: 0 12px;
+        border: 1px solid #d8e0ea;
+        border-radius: 10px;
+        background: #ffffff;
+        color: #475569;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .tab-panel {
+        display: none;
+    }
+
+    .tab-panel.active {
+        display: block;
+    }
+
+    .table-shell {
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .table-title {
+        padding: 20px 22px 8px;
+        color: #1d2f47;
+        font-size: 16px;
+        font-weight: 800;
+    }
+
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .report-table th {
+        padding: 16px 22px;
+        border-bottom: 1px solid #d8e0ea;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .report-table td {
+        padding: 16px 22px;
+        border-bottom: 1px solid #e7edf5;
+        color: #475569;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+    .report-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .report-table tr:hover {
+        background: #f8fbff;
+    }
+
+    .type-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: #1d2f47;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .member-name {
+        display: block;
+        color: #1d2f47;
+        font-weight: 800;
+    }
+
+    .member-email {
+        display: block;
+        margin-top: 3px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .miles-positive {
+        color: #16833a;
+        font-weight: 800;
+    }
+
+    .miles-negative {
+        color: #dc3545;
+        font-weight: 800;
+    }
+
+    .btn-delete-row {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: #dc3545;
+        cursor: pointer;
+    }
+
+    .btn-delete-row:hover {
+        background: #fff1f2;
+    }
+
+    .btn-delete-row:disabled {
+        color: #cbd5e1;
+        cursor: not-allowed;
+    }
+
+    .rank-cell {
+        color: #1d2f47;
+        font-weight: 800;
+    }
+
+    .delete-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(15, 23, 42, 0.62);
+    }
+
+    .delete-modal.show {
+        display: flex;
+    }
+
+    .delete-modal-content {
+        width: min(430px, 100%);
+        padding: 28px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+    }
+
+    .delete-modal-content h2 {
+        margin: 0 0 8px;
+        color: #1d2f47;
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .delete-modal-content p {
+        margin: 0 0 22px;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .btn-modal {
+        min-height: 40px;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .btn-modal-cancel {
+        border: 1px solid #d8e0ea;
+        background: #ffffff;
+        color: #475569;
+    }
+
+    .btn-modal-delete {
+        border: none;
+        background: #1d5a91;
+        color: #ffffff;
+    }
+
+    @media (max-width: 900px) {
+        .summary-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .report-table th,
+        .report-table td {
+            padding: 13px 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-page">
+    <div class="report-header">
+        <h1>Laporan & Riwayat Transaksi</h1>
+        <p>Pantau aktivitas miles, rekap transaksi, dan member dengan aktivitas tertinggi.</p>
+    </div>
+
+    <section class="summary-grid" aria-label="Ringkasan transaksi">
+        <div class="summary-card">
+            <div class="summary-icon blue">
+                <i class="fa-solid fa-arrow-trend-up"></i>
+            </div>
+            <div>
+                <span>Total Miles Beredar</span>
+                <strong>{{ summary.total_miles }}</strong>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon red">
+                <i class="fa-solid fa-gift"></i>
+            </div>
+            <div>
+                <span>Total Redeem Bulan Ini</span>
+                <strong>{{ summary.monthly_redeem }}</strong>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon green">
+                <i class="fa-solid fa-plane-circle-check"></i>
+            </div>
+            <div>
+                <span>Total Klaim Disetujui</span>
+                <strong>{{ summary.approved_claims }}</strong>
+            </div>
+        </div>
+    </section>
+
+    <div class="report-tabs" role="tablist" aria-label="Laporan transaksi">
+        <button type="button" class="report-tab active" data-tab-target="history-panel">Riwayat Transaksi</button>
+        <button type="button" class="report-tab" data-tab-target="top-member-panel">Top Member</button>
+    </div>
+
+    <section id="history-panel" class="tab-panel active">
+        <div class="filter-row">
+            <select id="typeFilter" aria-label="Filter tipe transaksi">
+                <option value="all">Semua Tipe</option>
+                <option value="Transfer">Transfer</option>
+                <option value="Redeem">Redeem</option>
+                <option value="Package">Package</option>
+                <option value="Klaim">Klaim</option>
+            </select>
+        </div>
+
+        <div class="table-shell">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Tipe</th>
+                        <th>Member</th>
+                        <th>Miles</th>
+                        <th>Waktu</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                        <tr data-transaction-type="{{ transaction.type }}">
+                            <td>
+                                <span class="type-pill">
+                                    <i class="fa-solid {{ transaction.icon }}"></i>
+                                    {{ transaction.type }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="member-name">{{ transaction.member }}</span>
+                                <span class="member-email">{{ transaction.email }}</span>
+                            </td>
+                            <td>
+                                <span class="{% if transaction.is_positive %}miles-positive{% else %}miles-negative{% endif %}">
+                                    {{ transaction.miles }}
+                                </span>
+                            </td>
+                            <td>{{ transaction.timestamp }}</td>
+                            <td>
+                                <button
+                                    type="button"
+                                    class="btn-delete-row"
+                                    {% if not transaction.can_delete %}disabled title="Klaim disetujui tidak dapat dihapus"{% else %}title="Hapus riwayat"{% endif %}
+                                >
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="top-member-panel" class="tab-panel">
+        <div class="table-shell">
+            <div class="table-title">Top Member berdasarkan Total Miles</div>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Member</th>
+                        <th>Total Miles</th>
+                        <th>Jumlah Transaksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in top_members %}
+                        <tr>
+                            <td class="rank-cell">{{ member.rank }}</td>
+                            <td>
+                                <span class="member-name">{{ member.name }}</span>
+                                <span class="member-email">{{ member.email }}</span>
+                            </td>
+                            <td><strong>{{ member.total_miles }}</strong></td>
+                            <td>{{ member.transactions }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<div id="deleteModal" class="delete-modal" aria-hidden="true">
+    <div class="delete-modal-content" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+        <h2 id="deleteModalTitle">Hapus Riwayat?</h2>
+        <p>Penghapusan riwayat transaksi bersifat permanen dan tidak dapat dibatalkan.</p>
+        <div class="modal-actions">
+            <button type="button" class="btn-modal btn-modal-cancel" id="cancelDeleteModal">Batal</button>
+            <button type="button" class="btn-modal btn-modal-delete" id="confirmDeleteModal">Hapus</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const tabs = document.querySelectorAll('.report-tab');
+    const panels = document.querySelectorAll('.tab-panel');
+
+    tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            const targetId = tab.dataset.tabTarget;
+            tabs.forEach((item) => item.classList.remove('active'));
+            panels.forEach((panel) => panel.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+
+    const typeFilter = document.getElementById('typeFilter');
+    const transactionRows = document.querySelectorAll('[data-transaction-type]');
+
+    typeFilter.addEventListener('change', () => {
+        transactionRows.forEach((row) => {
+            const shouldShow = typeFilter.value === 'all' || row.dataset.transactionType === typeFilter.value;
+            row.style.display = shouldShow ? '' : 'none';
+        });
+    });
+
+    const deleteModal = document.getElementById('deleteModal');
+    const cancelDeleteModal = document.getElementById('cancelDeleteModal');
+    const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+    let selectedRow = null;
+
+    document.querySelectorAll('.btn-delete-row:not(:disabled)').forEach((button) => {
+        button.addEventListener('click', () => {
+            selectedRow = button.closest('tr');
+            deleteModal.classList.add('show');
+            deleteModal.setAttribute('aria-hidden', 'false');
+        });
+    });
+
+    function hideDeleteModal() {
+        deleteModal.classList.remove('show');
+        deleteModal.setAttribute('aria-hidden', 'true');
+    }
+
+    cancelDeleteModal.addEventListener('click', hideDeleteModal);
+    deleteModal.addEventListener('click', (event) => {
+        if (event.target === deleteModal) {
+            hideDeleteModal();
+        }
+    });
+
+    confirmDeleteModal.addEventListener('click', () => {
+        if (selectedRow) {
+            selectedRow.remove();
+        }
+        hideDeleteModal();
+    });
+</script>
+{% endblock %}

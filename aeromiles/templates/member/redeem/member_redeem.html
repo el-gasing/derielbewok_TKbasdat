@@ -1,0 +1,600 @@
+{% extends "base.html" %}
+
+{% block title %}Redeem Hadiah - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .redeem-page {
+        max-width: 1060px;
+        margin: 0 auto;
+    }
+
+    .redeem-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 24px;
+    }
+
+    .redeem-header h1 {
+        margin: 0 0 8px;
+        color: #1d2f47;
+        font-size: 28px;
+        font-weight: 800;
+    }
+
+    .redeem-header p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    .miles-summary {
+        min-width: 230px;
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-radius: 14px;
+        padding: 16px 18px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .miles-summary span {
+        display: block;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+
+    .miles-summary strong {
+        color: #1d2f47;
+        font-size: 26px;
+        line-height: 1;
+    }
+
+    .redeem-tabs {
+        display: inline-flex;
+        gap: 6px;
+        padding: 5px;
+        background: #eaf0f7;
+        border: 1px solid #d8e0ea;
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+
+    .redeem-tab {
+        border: none;
+        border-radius: 9px;
+        padding: 9px 14px;
+        background: transparent;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .redeem-tab.active {
+        background: #ffffff;
+        color: #1d2f47;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+    }
+
+    .tab-panel {
+        display: none;
+    }
+
+    .tab-panel.active {
+        display: block;
+    }
+
+    .reward-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 18px;
+    }
+
+    .reward-card {
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .reward-topline {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .reward-code {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 100%;
+        padding: 7px 11px;
+        border-radius: 999px;
+        background: #e8f0f8;
+        color: #1d5a91;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .reward-category {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .reward-card h2 {
+        margin: 0 0 6px;
+        color: #1d2f47;
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .reward-provider {
+        margin: 0 0 10px;
+        color: #475569;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .reward-desc {
+        min-height: 48px;
+        margin: 0 0 14px;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+    .reward-meta {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-bottom: 16px;
+        color: #475569;
+        font-size: 13px;
+    }
+
+    .reward-meta strong {
+        color: #1d2f47;
+    }
+
+    .reward-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding-top: 14px;
+        border-top: 1px solid #e7edf5;
+    }
+
+    .reward-miles {
+        color: #1d2f47;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .reward-miles span {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .btn-redeem {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 40px;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 16px;
+        background: #c82333;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .btn-redeem:hover {
+        background: #a81d2a;
+    }
+
+    .btn-redeem:disabled {
+        background: #e2e8f0;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+
+    .history-table-wrap {
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .history-table th {
+        background: #f3f6fa;
+        padding: 16px 18px;
+        border-bottom: 1px solid #d8e0ea;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .history-table td {
+        padding: 17px 18px;
+        border-bottom: 1px solid #e7edf5;
+        color: #475569;
+        font-size: 14px;
+    }
+
+    .history-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .history-table tr:hover {
+        background: #f8fbff;
+    }
+
+    .history-reward {
+        color: #1d2f47;
+        font-weight: 800;
+    }
+
+    .miles-minus {
+        color: #c82333;
+        font-weight: 800;
+    }
+
+    .status-done {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #d4f4dd;
+        color: #0f7938;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .empty-state {
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-radius: 14px;
+        padding: 54px 20px;
+        text-align: center;
+        color: #64748b;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .empty-state i {
+        display: block;
+        margin-bottom: 14px;
+        color: #94a3b8;
+        font-size: 40px;
+    }
+
+    .redeem-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(15, 23, 42, 0.52);
+    }
+
+    .redeem-modal.show {
+        display: flex;
+    }
+
+    .redeem-modal-content {
+        width: min(440px, 100%);
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+        padding: 28px;
+    }
+
+    .redeem-modal-content h2 {
+        margin: 0 0 8px;
+        color: #1d2f47;
+        font-size: 22px;
+        font-weight: 800;
+    }
+
+    .redeem-modal-content p {
+        margin: 0 0 20px;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+    .modal-summary {
+        border: 1px solid #d8e0ea;
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 20px;
+        background: #f8fbff;
+    }
+
+    .modal-summary span {
+        display: block;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .modal-summary strong {
+        color: #1d2f47;
+        font-size: 16px;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-modal {
+        flex: 1;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 14px;
+        font-size: 14px;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .btn-modal-cancel {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #d8e0ea;
+    }
+
+    .btn-modal-redeem {
+        background: #c82333;
+        color: #ffffff;
+    }
+
+    @media (max-width: 768px) {
+        .redeem-header {
+            flex-direction: column;
+        }
+
+        .miles-summary {
+            width: 100%;
+        }
+
+        .redeem-tabs {
+            width: 100%;
+        }
+
+        .redeem-tab {
+            flex: 1;
+        }
+
+        .reward-actions,
+        .modal-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .history-table th,
+        .history-table td {
+            padding: 13px 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="redeem-page">
+    <div class="redeem-header">
+        <div>
+            <h1>Redeem Hadiah</h1>
+            <p>Tukarkan award miles dengan hadiah dari program AeroMiles.</p>
+        </div>
+        <div class="miles-summary">
+            <span>Award Miles Tersedia</span>
+            <strong>{{ member.total_miles|floatformat:0 }}</strong>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="redeem-tabs" role="tablist" aria-label="Redeem Hadiah">
+        <button type="button" class="redeem-tab active" data-tab-target="catalog-panel">
+            <i class="fa-solid fa-gift"></i> Katalog Hadiah
+        </button>
+        <button type="button" class="redeem-tab" data-tab-target="history-panel">
+            <i class="fa-solid fa-clock-rotate-left"></i> Riwayat Redeem
+        </button>
+    </div>
+
+    <section id="catalog-panel" class="tab-panel active">
+        {% if rewards %}
+            <div class="reward-grid">
+                {% for reward in rewards %}
+                    <article class="reward-card">
+                        <div class="reward-topline">
+                            <span class="reward-code">
+                                <i class="fa-solid fa-ticket"></i>
+                                {{ reward.code }} - {{ reward.provider }}
+                            </span>
+                            <span class="reward-category">{{ reward.category }}</span>
+                        </div>
+
+                        <h2>{{ reward.name }}</h2>
+                        <p class="reward-provider">{{ reward.provider }}</p>
+                        <p class="reward-desc">{{ reward.description }}</p>
+
+                        <div class="reward-meta">
+                            <div><strong>Periode:</strong> {{ reward.valid_from|date:"Y-m-d" }} - {{ reward.valid_until|date:"Y-m-d" }}</div>
+                            <div><strong>Penyedia:</strong> {{ reward.provider }}</div>
+                        </div>
+
+                        <div class="reward-actions">
+                            <div class="reward-miles">
+                                <span>Miles Dibutuhkan</span>
+                                {{ reward.miles|floatformat:0 }} miles
+                            </div>
+                            <button
+                                type="button"
+                                class="btn-redeem"
+                                data-reward-name="{{ reward.name }}"
+                                data-reward-code="{{ reward.code }}"
+                                data-reward-miles="{{ reward.miles|floatformat:0 }}"
+                                {% if member.total_miles < reward.miles %}disabled{% endif %}
+                            >
+                                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                                Redeem
+                            </button>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fa-solid fa-gift"></i>
+                Belum ada hadiah yang tersedia.
+            </div>
+        {% endif %}
+    </section>
+
+    <section id="history-panel" class="tab-panel">
+        {% if redeem_history %}
+            <div class="history-table-wrap">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Hadiah</th>
+                            <th>Waktu</th>
+                            <th>Miles</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in redeem_history %}
+                            <tr>
+                                <td class="history-reward">{{ item.reward }}</td>
+                                <td>{{ item.timestamp }}</td>
+                                <td class="miles-minus">-{{ item.miles|floatformat:0 }}</td>
+                                <td>
+                                    <span class="status-done">
+                                        <i class="fa-solid fa-check"></i>
+                                        {{ item.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <i class="fa-solid fa-lock" title="Transaksi tidak dapat diubah"></i>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                Belum ada riwayat redeem.
+            </div>
+        {% endif %}
+    </section>
+</div>
+
+<div id="redeemModal" class="redeem-modal" aria-hidden="true">
+    <div class="redeem-modal-content" role="dialog" aria-modal="true" aria-labelledby="redeemModalTitle">
+        <h2 id="redeemModalTitle">Konfirmasi Redeem</h2>
+        <p>Pastikan hadiah yang dipilih sudah sesuai sebelum transaksi dibuat.</p>
+        <div class="modal-summary">
+            <span>Kode Hadiah</span>
+            <strong id="modalRewardCode"></strong>
+        </div>
+        <div class="modal-summary">
+            <span>Hadiah</span>
+            <strong id="modalRewardName"></strong>
+        </div>
+        <div class="modal-summary">
+            <span>Miles Digunakan</span>
+            <strong id="modalRewardMiles"></strong>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-modal btn-modal-cancel" id="closeRedeemModal">Batal</button>
+            <button type="button" class="btn-modal btn-modal-redeem">Redeem</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const tabs = document.querySelectorAll('.redeem-tab');
+    const panels = document.querySelectorAll('.tab-panel');
+
+    tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            const targetId = tab.dataset.tabTarget;
+            tabs.forEach((item) => item.classList.remove('active'));
+            panels.forEach((panel) => panel.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+
+    const modal = document.getElementById('redeemModal');
+    const closeModal = document.getElementById('closeRedeemModal');
+    const modalRewardCode = document.getElementById('modalRewardCode');
+    const modalRewardName = document.getElementById('modalRewardName');
+    const modalRewardMiles = document.getElementById('modalRewardMiles');
+
+    document.querySelectorAll('.btn-redeem:not(:disabled)').forEach((button) => {
+        button.addEventListener('click', () => {
+            modalRewardCode.textContent = button.dataset.rewardCode;
+            modalRewardName.textContent = button.dataset.rewardName;
+            modalRewardMiles.textContent = `${button.dataset.rewardMiles} miles`;
+            modal.classList.add('show');
+            modal.setAttribute('aria-hidden', 'false');
+        });
+    });
+
+    function hideRedeemModal() {
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    closeModal.addEventListener('click', hideRedeemModal);
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            hideRedeemModal();
+        }
+    });
+</script>
+{% endblock %}

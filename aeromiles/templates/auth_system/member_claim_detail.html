@@ -1,33 +1,101 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detail Claim - AeroMiles</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<div class="container py-4" style="max-width: 760px;">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Detail Claim {{ claim.claim_id }}</h2>
-        <a href="{% url 'auth_system:member_claim_list' %}" class="btn btn-outline-secondary">Kembali</a>
+
+{% block title %}Detail Claim - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-container { max-width:760px; margin:0 auto; }
+    .detail-dl dt { font-weight:700; color:var(--muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    .detail-container { max-width:920px; margin:0 auto; }
+    .detail-hero {
+        background: linear-gradient(135deg, #233247 0%, #3b6ea8 100%);
+        color:#fff;
+        border-radius: 22px;
+        padding: 26px 28px;
+        margin-bottom: 18px;
+        box-shadow: 0 16px 34px rgba(35, 50, 71, 0.18);
+    }
+    .detail-grid {
+        display:grid;
+        grid-template-columns: 1.1fr .9fr;
+        gap: 18px;
+    }
+    .detail-card, .summary-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+        padding: 22px;
+    }
+    .detail-dl dt { font-weight:700; color:var(--muted); }
+    .detail-dl dd { margin-bottom: 14px; }
+    .status-pill {
+        display:inline-flex; align-items:center; padding:8px 14px; border-radius:999px; font-weight:800; font-size:12px;
+    }
+    .status-pending { background:#fff7e6; color:#9a6700; }
+    .status-approved { background:#e7f8ee; color:#0f7a3d; }
+    .status-rejected { background:#ffe8ea; color:#bf1e2e; }
+    .status-processed { background:#e8f1ff; color:#2257a3; }
+    .summary-list { list-style:none; padding:0; margin:16px 0 0; }
+    .summary-list li { display:flex; justify-content:space-between; gap:14px; padding: 12px 0; border-bottom:1px solid #e7edf5; color:#475569; }
+    .summary-list li:last-child { border-bottom:none; }
+    .summary-label { font-weight:700; color:#233247; }
+    @media (max-width: 992px) {
+        .detail-grid { grid-template-columns: 1fr; }
+    }
+        <a href="{% url 'auth_system:member_claim_list' %}" class="button-link">Kembali</a>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card">
         <div class="card-body">
-            <dl class="row mb-0">
+    <section class="detail-hero">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+                <div class="hero-kicker" style="text-transform:uppercase; letter-spacing:.18em; font-size:11px; opacity:.75; margin-bottom:8px;">Claim Detail</div>
+                <h2 class="mb-1" style="font-size:30px; font-weight:800;">Claim {{ claim.claim_id }}</h2>
+                <p class="mb-0" style="max-width:62ch; color:rgba(255,255,255,.84);">Rangkuman detail klaim missing miles dan status pemrosesannya.</p>
+            </div>
+            <a href="{% url 'auth_system:member_claim_list' %}" class="button-link" style="background:#fff; color:#233247;">Kembali</a>
+        </div>
+    </section>
+
+    <div class="detail-grid">
+        <div class="detail-card">
+            <dl class="row detail-dl mb-0">
                 <dt class="col-sm-4">Flight Number</dt><dd class="col-sm-8">{{ claim.flight_number }}</dd>
                 <dt class="col-sm-4">Tanggal Flight</dt><dd class="col-sm-8">{{ claim.flight_date }}</dd>
                 <dt class="col-sm-4">Jumlah Miles</dt><dd class="col-sm-8">{{ claim.miles_amount }}</dd>
-                <dt class="col-sm-4">Status</dt><dd class="col-sm-8">{{ claim.get_status_display }}</dd>
+                <dt class="col-sm-4">Status</dt>
+                <dd class="col-sm-8">
+                    {% if claim.status == 'pending' %}
+                        <span class="status-pill status-pending">{{ claim.get_status_display }}</span>
+                    {% elif claim.status == 'approved' %}
+                        <span class="status-pill status-approved">{{ claim.get_status_display }}</span>
+                    {% elif claim.status == 'rejected' %}
+                        <span class="status-pill status-rejected">{{ claim.get_status_display }}</span>
+                    {% else %}
+                        <span class="status-pill status-processed">{{ claim.get_status_display }}</span>
+                    {% endif %}
+                </dd>
                 <dt class="col-sm-4">Alasan</dt><dd class="col-sm-8">{{ claim.reason }}</dd>
                 <dt class="col-sm-4">Catatan</dt><dd class="col-sm-8">{{ claim.description|default:'-' }}</dd>
                 <dt class="col-sm-4">Diproses Oleh</dt><dd class="col-sm-8">{{ claim.approved_by.user.username|default:'-' }}</dd>
             </dl>
         </div>
-    </div>
-</div>
-<script src="{% static 'auth_system/js/app.js' %}" defer></script>
-</body>
-</html>
+
+        <aside class="summary-card">
+            <h3 style="font-size:18px; font-weight:800; color:#233247; margin-bottom:10px;">Ringkasan</h3>
+            <ul class="summary-list">
+                <li><span class="summary-label">Claim ID</span><span>{{ claim.claim_id }}</span></li>
+                <li><span class="summary-label">Miles</span><span>{{ claim.miles_amount }}</span></li>
+                <li><span class="summary-label">Status</span><span>{{ claim.get_status_display }}</span></li>
+                <li><span class="summary-label">Dibuat</span><span>{{ claim.created_at|date:'d M Y, H:i' }}</span></li>
+            </ul>
+        </aside>
+{% endblock %}

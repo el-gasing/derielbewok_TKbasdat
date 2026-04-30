@@ -168,18 +168,21 @@
                         <a href="{% url 'auth_system:staff_claim_list' %}" class="nav-link">Kelola Klaim</a>
                         <a href="#" class="nav-link">Kelola Hadiah & Penyedia</a>
                         <a href="#" class="nav-link">Kelola Mitra</a>
-                        <a href="#" class="nav-link">Laporan Transaksi</a>
+                        <a href="{% url 'auth_system:staff_transaction_report' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_transaction_report' %}active{% endif %}">Laporan Transaksi</a>
                         <a href="#" class="nav-link">Pengaturan Profil</a>
                     {% else %}
                         <a href="{% url 'auth_system:member_identities_list' %}" class="nav-link">Identitas Saya</a>
                         <a href="{% url 'auth_system:member_claim_list' %}" class="nav-link">Klaim Miles</a>
                         <a href="{% url 'auth_system:member_transfer_list' %}" class="nav-link">Transfer Miles</a>
-                        <a href="#" class="nav-link">Redeem Hadiah</a>
-                        <a href="#" class="nav-link">Beli Package</a>
-                        <a href="#" class="nav-link">Info Tier</a>
+                        <a href="{% url 'auth_system:member_redeem' %}" class="nav-link {% if request.resolver_match.url_name == 'member_redeem' %}active{% endif %}">Redeem Hadiah</a>
+                        <a href="{% url 'auth_system:member_package' %}" class="nav-link {% if request.resolver_match.url_name == 'member_package' %}active{% endif %}">Beli Package</a>
+                        <a href="{% url 'auth_system:member_tier' %}" class="nav-link {% if request.resolver_match.url_name == 'member_tier' %}active{% endif %}">Info Tier</a>
                         <a href="#" class="nav-link">Pengaturan Profil</a>
                     {% endif %}
-                        <a href="{% url 'auth_system:logout' %}" class="nav-link">Logout</a>
+                        <form method="post" action="{% url 'auth_system:logout' %}" style="display:inline; margin:0;">
+                            {% csrf_token %}
+                            <button type="submit" class="nav-link" style="background:none; border:none; padding:8px 14px; cursor:pointer;">Logout</button>
+                        </form>
                     {% else %}
                         <a href="{% url 'auth_system:login' %}" class="nav-link">Login</a>
                         <a href="{% url 'auth_system:register_member' %}" class="nav-link">Registrasi</a>

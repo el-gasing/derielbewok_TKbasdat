@@ -1,22 +1,137 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transfer Miles - AeroMiles</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h2 class="mb-0">Transfer Miles</h2>
-            <small class="text-muted">Saldo Miles Saat Ini: {{ member.total_miles }}</small>
+
+{% block title %}Transfer Miles - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-container { max-width: 1120px; margin: 0 auto; }
+    .hero-panel {
+        background: linear-gradient(135deg, #233247 0%, #365173 55%, #3b6ea8 100%);
+        color: #fff;
+        border-radius: 22px;
+        padding: 28px;
+        box-shadow: 0 18px 40px rgba(35, 50, 71, 0.18);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 22px;
+    }
+    .hero-panel::after {
+        content: "";
+        position: absolute;
+        right: -40px;
+        top: -30px;
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+    }
+    .hero-top { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; position:relative; z-index:1; }
+    .hero-kicker { text-transform: uppercase; letter-spacing: .18em; font-size: 11px; opacity:.75; margin-bottom: 8px; }
+    .hero-title { margin:0; font-size: 30px; font-weight: 800; }
+    .hero-subtitle { margin:10px 0 0; color: rgba(255,255,255,.84); max-width: 56ch; }
+    .hero-meta { display:flex; gap:12px; flex-wrap:wrap; margin-top:18px; }
+    .meta-chip {
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.14);
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .page-actions { display:flex; gap:12px; flex-wrap:wrap; }
+    .action-buttons { display:flex; gap:10px; flex-wrap:wrap; }
+    .soft-button {
+        display:inline-flex; align-items:center; justify-content:center; gap:8px;
+        padding: 11px 16px; border-radius: 12px; text-decoration:none; font-weight:700;
+        border: 1px solid rgba(255,255,255,.18); color:#fff; background: rgba(255,255,255,.08);
+        transition: transform .18s ease, background .18s ease, border-color .18s ease;
+    }
+    .soft-button:hover { transform: translateY(-1px); background: rgba(255,255,255,.14); color:#fff; }
+    .primary-button {
+        display:inline-flex; align-items:center; justify-content:center; gap:8px;
+        padding: 11px 18px; border-radius: 12px; text-decoration:none; font-weight:800;
+        background: #fff; color: #233247; box-shadow: 0 10px 24px rgba(0,0,0,.14);
+        transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .primary-button:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(0,0,0,.18); color:#233247; }
+    .metric-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+    .metric-card {
+        background: rgba(255,255,255,.92);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+    .metric-label { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .metric-value { margin-top: 8px; font-size: 28px; font-weight: 800; color: #233247; }
+    .metric-note { margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .table-card {
+        background: var(--surface); border: 1px solid var(--line); border-radius: 22px;
+        box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08); overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card thead th {
+        background: #f6f9fc; color: #334155; font-size: 12px; text-transform: uppercase;
+        letter-spacing: .08em; border-bottom: 1px solid var(--line); padding: 16px 18px;
+    }
+    .table-card td { padding: 16px 18px; vertical-align: middle; }
+    .table-card tbody tr:hover { background: #f8fbff; }
+    .badge-status {
+        display:inline-flex; align-items:center; gap:6px; padding: 7px 12px; border-radius: 999px;
+        font-size: 12px; font-weight: 800;
+    }
+    .badge-pending { background:#fff7e6; color:#9a6700; }
+    .badge-completed, .badge-active { background:#e7f8ee; color:#0f7a3d; }
+    .badge-cancelled { background:#ffe8ea; color:#bf1e2e; }
+    .empty-state {
+        text-align:center; padding: 42px 22px; color: var(--muted);
+    }
+    .empty-icon {
+        width: 64px; height:64px; margin: 0 auto 14px; border-radius: 18px; display:grid; place-items:center;
+        background: linear-gradient(135deg, rgba(59,110,168,.16), rgba(35,50,71,.12)); color:#233247; font-size: 26px;
+    }
+    @media (max-width: 992px) {
+        .metric-grid { grid-template-columns: 1fr; }
+        .hero-top { flex-direction: column; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <section class="hero-panel">
+        <div class="hero-top">
+            <div>
+                <div class="hero-kicker">Miles Transfer</div>
+                <h1 class="hero-title">Transfer Miles</h1>
+                <p class="hero-subtitle">Kelola transfer antar member dengan tampilan yang lebih modern, ringkas, dan mudah dipindai.</p>
+                <div class="hero-meta">
+                    <span class="meta-chip">Saldo Miles: {{ member.total_miles }}</span>
+                    <span class="meta-chip">Total Transaksi: {{ transfers|length }}</span>
+                </div>
+            </div>
+            <div class="page-actions">
+                <a href="{% url 'auth_system:member_transfer_create' %}" class="primary-button">+ Transfer Baru</a>
+            </div>
         </div>
-        <div class="d-flex gap-2">
-            <a href="{% url 'auth_system:dashboard' %}" class="btn btn-outline-secondary">Dashboard</a>
-            <a href="{% url 'auth_system:member_transfer_create' %}" class="btn btn-primary">+ Transfer Baru</a>
+    </section>
+
+    <div class="metric-grid">
+        <div class="metric-card">
+            <div class="metric-label">Total Transfer</div>
+            <div class="metric-value">{{ transfers|length }}</div>
+            <div class="metric-note">Seluruh transaksi transfer milik akunmu</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Saldo Aktif</div>
+            <div class="metric-value">{{ member.total_miles }}</div>
+            <div class="metric-note">Miles yang bisa digunakan sekarang</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Aksi Cepat</div>
+            <div class="metric-value">+</div>
+            <div class="metric-note">Buat transfer baru dalam beberapa klik</div>
         </div>
     </div>
 
@@ -26,9 +141,9 @@
         {% endfor %}
     {% endif %}
 
-    <div class="card shadow-sm">
+    <div class="table-card">
         <div class="table-responsive">
-            <table class="table table-striped mb-0">
+            <table class="table mb-0">
                 <thead>
                     <tr>
                         <th>ID Transfer</th>
@@ -46,12 +161,27 @@
                             <td>{{ transfer.from_member.member_id }}</td>
                             <td>{{ transfer.to_member.member_id }}</td>
                             <td>{{ transfer.miles_amount }}</td>
-                            <td><span class="badge text-bg-success">{{ transfer.get_status_display }}</span></td>
+                            <td>
+                                {% if transfer.status == 'pending' %}
+                                    <span class="badge-status badge-pending">{{ transfer.get_status_display }}</span>
+                                {% elif transfer.status == 'completed' %}
+                                    <span class="badge-status badge-completed">{{ transfer.get_status_display }}</span>
+                                {% else %}
+                                    <span class="badge-status badge-cancelled">{{ transfer.get_status_display }}</span>
+                                {% endif %}
+                            </td>
                             <td>{{ transfer.created_at|date:'Y-m-d H:i' }}</td>
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Belum ada transaksi transfer.</td>
+                            <td colspan="6">
+                                <div class="empty-state">
+                                    <div class="empty-icon">⇄</div>
+                                    <h3 class="mb-2">Belum ada transaksi transfer</h3>
+                                    <p class="mb-3">Buat transfer pertama untuk mulai memindahkan miles ke member lain.</p>
+                                    <a href="{% url 'auth_system:member_transfer_create' %}" class="primary-button">+ Buat Transfer Pertama</a>
+                                </div>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -59,6 +189,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
 <script src="{% static 'auth_system/js/app.js' %}" defer></script>
-</body>
-</html>
+{% endblock %}
