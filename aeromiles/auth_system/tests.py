@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import ClaimMissingMiles, Member, Staff, TransferMiles
+from .models import ClaimMissingMiles, Maskapai, Member, Staff, TransferMiles
 
 
 class AuthAndMilesWorkflowTests(TestCase):
@@ -38,10 +38,23 @@ class AuthAndMilesWorkflowTests(TestCase):
 			password='staffpass123',
 			first_name='Staff',
 		)
+		self.maskapai = Maskapai.objects.create(
+			name='Garuda Indonesia',
+			code='GA',
+			email='garuda@example.com',
+			is_active=True,
+		)
+		self.maskapai_baru = Maskapai.objects.create(
+			name='Singapore Airlines',
+			code='SQ',
+			email='sq@example.com',
+			is_active=True,
+		)
 		self.staff = Staff.objects.create(
 			user=self.staff_user,
 			staff_id='STF000001',
 			department='customer_service',
+			maskapai=self.maskapai,
 			is_active=True,
 		)
 
@@ -156,3 +169,79 @@ class AuthAndMilesWorkflowTests(TestCase):
 		self.member2.refresh_from_db()
 		self.assertEqual(self.member.total_miles, 750)
 		self.assertEqual(self.member2.total_miles, 450)
+
+	def test_member_can_update_own_profile(self):
+		self.client.login(username='member1', password='memberpass123')
+
+		response = self.client.post(
+			reverse('auth_system:profile_settings'),
+			data={
+				'action': 'save_profile',
+				'salutation': 'mr',
+				'first_name': 'John William',
+				'last_name': 'Doe',
+				'country_code': '+62',
+				'phone_number': '081234567890',
+				'nationality': 'Indonesia',
+				'birth_date': '1990-05-15',
+			},
+			follow=True,
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.member_user.refresh_from_db()
+		self.member.refresh_from_db()
+		self.assertEqual(self.member_user.first_name, 'John William')
+		self.assertEqual(self.member_user.last_name, 'Doe')
+		self.assertEqual(self.member.phone_number, '081234567890')
+		self.assertEqual(self.member.country_code, '+62')
+		self.assertEqual(self.member.nationality, 'Indonesia')
+		self.assertEqual(str(self.member.birth_date), '1990-05-15')
+		self.assertEqual(self.member.member_id, 'AMS000001')
+
+	def test_staff_can_update_profile_and_maskapai(self):
+		self.client.login(username='staff1', password='staffpass123')
+
+		response = self.client.post(
+			reverse('auth_system:profile_settings'),
+			data={
+				'action': 'save_profile',
+				'salutation': 'ms',
+				'first_name': 'Adinda',
+				'last_name': 'Aero',
+				'country_code': '+65',
+				'phone_number': '81234567',
+				'nationality': 'Singapore',
+				'birth_date': '1995-01-10',
+				'maskapai': self.maskapai_baru.id,
+			},
+			follow=True,
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.staff_user.refresh_from_db()
+		self.staff.refresh_from_db()
+		self.assertEqual(self.staff_user.first_name, 'Adinda')
+		self.assertEqual(self.staff_user.last_name, 'Aero')
+		self.assertEqual(self.staff.country_code, '+65')
+		self.assertEqual(self.staff.phone_number, '81234567')
+		self.assertEqual(self.staff.maskapai, self.maskapai_baru)
+		self.assertEqual(self.staff.staff_id, 'STF000001')
+
+	def test_user_can_change_password_from_profile_settings(self):
+		self.client.login(username='member1', password='memberpass123')
+
+		response = self.client.post(
+			reverse('auth_system:profile_settings'),
+			data={
+				'action': 'change_password',
+				'old_password': 'memberpass123',
+				'new_password1': 'Newpass456!',
+				'new_password2': 'Newpass456!',
+			},
+			follow=True,
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.member_user.refresh_from_db()
+		self.assertTrue(self.member_user.check_password('Newpass456!'))

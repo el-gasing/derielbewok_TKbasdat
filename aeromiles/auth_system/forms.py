@@ -3,7 +3,7 @@ from datetime import date
 
 from django import forms
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
 from django.utils.html import strip_tags
 from .models import ClaimMissingMiles, Identity, Maskapai, Member, Staff
 
@@ -351,6 +351,179 @@ class StaffRegistrationForm(UserCreationForm):
         if not maskapai.is_active:
             raise forms.ValidationError('Maskapai tidak aktif.')
         return maskapai
+
+
+class BaseProfileSettingsForm(forms.Form):
+    email = forms.EmailField(
+        label='Email',
+        required=False,
+        disabled=True,
+        widget=forms.EmailInput(attrs={'class': 'form-control'})
+    )
+    salutation = forms.ChoiceField(widget=forms.Select(attrs={'class': 'form-select'}))
+    first_name = forms.CharField(
+        max_length=50,
+        label='Nama Depan / Tengah',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nama depan / tengah'})
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        label='Nama Belakang',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nama belakang'})
+    )
+    country_code = forms.ChoiceField(
+        choices=COUNTRY_CODE_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        label='Nomor HP',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor HP'})
+    )
+    nationality = forms.ChoiceField(
+        choices=[('', 'Pilih negara')] + NATIONALITY_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    birth_date = forms.DateField(
+        label='Tanggal Lahir',
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+    )
+
+    salutation_choices = []
+
+    def __init__(self, *args, user, profile, **kwargs):
+        self.user = user
+        self.profile = profile
+        super().__init__(*args, **kwargs)
+        self.fields['salutation'].choices = [('', 'Pilih')] + list(self.salutation_choices)
+        self.fields['email'].initial = user.email
+        self.fields['salutation'].initial = profile.salutation
+        self.fields['first_name'].initial = user.first_name
+        self.fields['last_name'].initial = user.last_name
+        self.fields['country_code'].initial = profile.country_code
+        self.fields['phone_number'].initial = profile.phone_number
+        self.fields['nationality'].initial = profile.nationality
+        self.fields['birth_date'].initial = profile.birth_date
+
+    def clean_first_name(self):
+        return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
+
+    def clean_last_name(self):
+        return _sanitize_text(self.cleaned_data.get('last_name'), max_length=50)
+
+    def clean_phone_number(self):
+        return _sanitize_phone(self.cleaned_data.get('phone_number'))
+
+    def clean_birth_date(self):
+        value = self.cleaned_data.get('birth_date')
+        if value and value > date.today():
+            raise forms.ValidationError('Tanggal lahir tidak valid.')
+        return value
+
+    def save(self):
+        self.user.first_name = self.cleaned_data['first_name']
+        self.user.last_name = self.cleaned_data['last_name']
+        self.user.save(update_fields=['first_name', 'last_name'])
+
+        self.profile.salutation = self.cleaned_data['salutation']
+        self.profile.country_code = self.cleaned_data['country_code']
+        self.profile.phone_number = self.cleaned_data['phone_number']
+        self.profile.nationality = self.cleaned_data['nationality']
+        self.profile.birth_date = self.cleaned_data['birth_date']
+        self._save_profile()
+        return self.user, self.profile
+
+    def _save_profile(self):
+        raise NotImplementedError
+
+
+class MemberProfileSettingsForm(BaseProfileSettingsForm):
+    member_id = forms.CharField(
+        label='Nomor Member',
+        required=False,
+        disabled=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    joined_at = forms.DateField(
+        label='Tanggal Bergabung',
+        required=False,
+        disabled=True,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+    )
+    salutation_choices = Member.SALUTATION_CHOICES
+
+    def __init__(self, *args, user, profile, **kwargs):
+        super().__init__(*args, user=user, profile=profile, **kwargs)
+        self.fields['member_id'].initial = profile.member_id
+        self.fields['joined_at'].initial = profile.created_at.date() if profile.created_at else None
+        self.order_fields([
+            'email', 'member_id', 'joined_at', 'salutation',
+            'first_name', 'last_name', 'nationality',
+            'country_code', 'phone_number', 'birth_date',
+        ])
+
+    def _save_profile(self):
+        self.profile.save(update_fields=[
+            'salutation', 'country_code', 'phone_number', 'nationality', 'birth_date', 'updated_at'
+        ])
+
+
+class StaffProfileSettingsForm(BaseProfileSettingsForm):
+    staff_id = forms.CharField(
+        label='ID Staff',
+        required=False,
+        disabled=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    maskapai = forms.ModelChoiceField(
+        label='Kode Maskapai',
+        queryset=Maskapai.objects.none(),
+        empty_label='Pilih maskapai',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    salutation_choices = Staff.SALUTATION_CHOICES
+
+    def __init__(self, *args, user, profile, **kwargs):
+        super().__init__(*args, user=user, profile=profile, **kwargs)
+        self.fields['staff_id'].initial = profile.staff_id
+        self.fields['maskapai'].queryset = Maskapai.objects.filter(is_active=True).order_by('name')
+        self.fields['maskapai'].label_from_instance = lambda obj: f"{obj.code} - {obj.name}"
+        self.fields['maskapai'].initial = profile.maskapai
+        self.order_fields([
+            'email', 'staff_id', 'salutation',
+            'first_name', 'last_name', 'nationality',
+            'country_code', 'phone_number', 'birth_date', 'maskapai',
+        ])
+
+    def clean_maskapai(self):
+        maskapai = self.cleaned_data.get('maskapai')
+        if not maskapai:
+            raise forms.ValidationError('Maskapai wajib dipilih.')
+        if not maskapai.is_active:
+            raise forms.ValidationError('Maskapai tidak aktif.')
+        return maskapai
+
+    def _save_profile(self):
+        self.profile.maskapai = self.cleaned_data['maskapai']
+        self.profile.save(update_fields=[
+            'salutation', 'country_code', 'phone_number', 'nationality', 'birth_date', 'maskapai', 'updated_at'
+        ])
+
+
+class StyledPasswordChangeForm(PasswordChangeForm):
+    old_password = forms.CharField(
+        label='Password Lama',
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'autocomplete': 'current-password'})
+    )
+    new_password1 = forms.CharField(
+        label='Password Baru',
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'autocomplete': 'new-password'})
+    )
+    new_password2 = forms.CharField(
+        label='Konfirmasi Password Baru',
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'autocomplete': 'new-password'})
+    )
 
 
 class ClaimMissingMilesForm(forms.ModelForm):
