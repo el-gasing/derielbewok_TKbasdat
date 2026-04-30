@@ -493,6 +493,83 @@ def member_transfer_list_view(request):
     return render(request, 'member/transfer/member_transfer_list.html', {'member': member, 'transfers': transfers})
 
 
+@login_required(login_url='auth_system:login')
+def member_redeem_view(request):
+    member = _get_member(request.user)
+    if not member:
+        messages.error(request, 'Halaman ini hanya untuk member.')
+        return redirect('auth_system:dashboard')
+
+    rewards = [
+        {
+            'code': 'RWD-005',
+            'name': 'Upgrade Business Class',
+            'provider': 'Garuda Indonesia',
+            'miles': 15000,
+            'description': 'Upgrade dari economy class ke business class untuk rute domestik pilihan.',
+            'valid_from': date(2026, 1, 1),
+            'valid_until': date(2027, 1, 1),
+            'category': 'Flight',
+        },
+        {
+            'code': 'RWD-011',
+            'name': 'Akses Lounge 1x',
+            'provider': 'AeroMiles Lounge',
+            'miles': 3000,
+            'description': 'Akses satu kali ke lounge bandara partner sebelum penerbangan.',
+            'valid_from': date(2026, 2, 1),
+            'valid_until': date(2026, 12, 31),
+            'category': 'Airport',
+        },
+        {
+            'code': 'RWD-018',
+            'name': 'Voucher Hotel Partner',
+            'provider': 'AeroStay',
+            'miles': 22000,
+            'description': 'Potongan menginap untuk hotel partner AeroMiles di kota besar Indonesia.',
+            'valid_from': date(2026, 3, 1),
+            'valid_until': date(2026, 11, 30),
+            'category': 'Travel',
+        },
+        {
+            'code': 'RWD-002',
+            'name': 'Extra Baggage 10 Kg',
+            'provider': 'AeroMiles',
+            'miles': 5000,
+            'description': 'Tambahan bagasi 10 kg untuk penerbangan domestik tertentu.',
+            'valid_from': date(2025, 1, 1),
+            'valid_until': date(2025, 12, 31),
+            'category': 'Flight',
+        },
+    ]
+    available_rewards = [
+        reward for reward in rewards
+        if reward['valid_until'] >= date.today()
+    ]
+
+    redeem_history = [
+        {
+            'reward': 'Akses Lounge 1x',
+            'timestamp': '2025-01-20 16:00',
+            'miles': 3000,
+            'status': 'Selesai',
+        },
+        {
+            'reward': 'Extra Baggage 10 Kg',
+            'timestamp': '2024-12-08 09:30',
+            'miles': 5000,
+            'status': 'Selesai',
+        },
+    ]
+
+    context = {
+        'member': member,
+        'rewards': available_rewards,
+        'redeem_history': redeem_history,
+    }
+    return render(request, 'member/redeem/member_redeem.html', context)
+
+
 @require_http_methods(["GET", "POST"])
 @login_required(login_url='auth_system:login')
 def member_transfer_create_view(request):

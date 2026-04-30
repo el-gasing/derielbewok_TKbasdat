@@ -37,4 +37,7 @@ urlpatterns = [
     # Member: Transfer Miles
     path('member/transfer/', views.member_transfer_list_view, name='member_transfer_list'),
     path('member/transfer/add/', views.member_transfer_create_view, name='member_transfer_create'),
+
+    # Member: Redeem Hadiah
+    path('member/redeem/', views.member_redeem_view, name='member_redeem'),
 ]
