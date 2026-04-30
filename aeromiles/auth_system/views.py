@@ -611,6 +611,94 @@ def member_package_view(request):
     return render(request, 'member/package/member_package.html', context)
 
 
+@login_required(login_url='auth_system:login')
+def member_tier_view(request):
+    member = _get_member(request.user)
+    if not member:
+        messages.error(request, 'Halaman ini hanya untuk member.')
+        return redirect('auth_system:dashboard')
+
+    tiers = [
+        {
+            'code': 'blue',
+            'name': 'Blue',
+            'flight_min': 0,
+            'miles_min': 0,
+            'color': '#2f9bd7',
+            'benefits': [
+                'Akumulasi miles dasar',
+                'Akses penawaran khusus member',
+            ],
+        },
+        {
+            'code': 'silver',
+            'name': 'Silver',
+            'flight_min': 10,
+            'miles_min': 15000,
+            'color': '#8b98a8',
+            'benefits': [
+                'Bonus miles 25%',
+                'Priority check-in',
+                'Akses lounge partner',
+            ],
+        },
+        {
+            'code': 'gold',
+            'name': 'Gold',
+            'flight_min': 25,
+            'miles_min': 40000,
+            'color': '#d4a72c',
+            'benefits': [
+                'Bonus miles 50%',
+                'Priority boarding',
+                'Akses lounge premium',
+                'Extra bagasi 10kg',
+            ],
+        },
+        {
+            'code': 'platinum',
+            'name': 'Platinum',
+            'flight_min': 50,
+            'miles_min': 80000,
+            'color': '#111827',
+            'benefits': [
+                'Bonus miles 100%',
+                'Upgrade gratis sesuai ketersediaan',
+                'Akses lounge first class',
+                'Extra bagasi 20kg',
+                'Dedicated hotline',
+            ],
+        },
+    ]
+
+    current_tier = tiers[0]
+    for tier in tiers:
+        if member.total_miles >= tier['miles_min']:
+            current_tier = tier
+
+    current_index = tiers.index(current_tier)
+    next_tier = tiers[current_index + 1] if current_index + 1 < len(tiers) else None
+    if next_tier:
+        progress_start = current_tier['miles_min']
+        progress_target = next_tier['miles_min']
+        progress_range = progress_target - progress_start
+        progress_value = max(0, member.total_miles - progress_start)
+        progress_percent = min(100, int((progress_value / progress_range) * 100)) if progress_range else 100
+    else:
+        progress_target = current_tier['miles_min']
+        progress_percent = 100
+
+    context = {
+        'member': member,
+        'tiers': tiers,
+        'current_tier': current_tier,
+        'next_tier': next_tier,
+        'progress_target': progress_target,
+        'progress_percent': progress_percent,
+    }
+    return render(request, 'member/tier/member_tier.html', context)
+
+
 @require_http_methods(["GET", "POST"])
 @login_required(login_url='auth_system:login')
 def member_transfer_create_view(request):

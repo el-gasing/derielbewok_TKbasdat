@@ -43,4 +43,7 @@ urlpatterns = [
 
     # Member: Award Miles Package
     path('member/package/', views.member_package_view, name='member_package'),
+
+    # Member: Tier Information
+    path('member/tier/', views.member_tier_view, name='member_tier'),
 ]
