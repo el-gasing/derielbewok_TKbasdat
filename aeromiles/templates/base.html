@@ -191,7 +191,7 @@
 
             {% if user.is_authenticated %}
                 <div class="navbar-user">
-                    Masuk sebagai <strong>{{ user.get_full_name|default:user.username }}</strong> - 
+                 <strong>{{ user.get_full_name|default:user.username }}</strong> - 
                     {% if user_type == 'staff' %}Staff{% else %}Member{% endif %}
                 </div>
             {% endif %}
