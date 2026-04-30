@@ -184,8 +184,8 @@
                             <button type="submit" class="nav-link" style="background:none; border:none; padding:8px 14px; cursor:pointer;">Logout</button>
                         </form>
                     {% else %}
-                        <a href="{% url 'auth_system:login' %}" class="nav-link">Login</a>
-                        <a href="{% url 'auth_system:register_member' %}" class="nav-link">Registrasi</a>
+                        <a href="{% url 'auth_system:login' %}" class="nav-link {% if request.resolver_match.url_name == 'login' %}active{% endif %}">Login</a>
+                        <a href="{% url 'auth_system:register_member' %}" class="nav-link {% if request.resolver_match.url_name == 'register_member' or request.resolver_match.url_name == 'register_staff' %}active{% endif %}">Registrasi</a>
                     {% endif %}
             </nav>
 

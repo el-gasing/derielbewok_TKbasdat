@@ -6,15 +6,14 @@
 <style>
     .content-wrap {
         display: flex;
-        align-items: center;
         justify-content: center;
         min-height: calc(100vh - 150px);
-        padding: 16px 0;
+        padding: 26px 0 36px;
     }
 
     .register-container {
         width: 100%;
-        max-width: 900px;
+        max-width: 640px;
     }
 
     .hero {
@@ -23,182 +22,160 @@
     }
 
     .hero-badge {
-        width: 56px;
-        height: 56px;
-        border-radius: 16px;
-        background: var(--accent);
-        color: white;
+        width: 58px;
+        height: 58px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
         margin-bottom: 16px;
-        box-shadow: 0 8px 22px rgba(59, 110, 168, 0.2);
+        border-radius: 16px;
+        background: #1d5a91;
+        color: #ffffff;
+        font-size: 24px;
+        box-shadow: 0 10px 24px rgba(29, 90, 145, 0.22);
     }
 
     .hero h1 {
         margin: 0;
-        font-size: 32px;
-        font-weight: 800;
         color: #1d2f47;
+        font-size: 30px;
+        font-weight: 800;
     }
 
     .hero p {
-        margin: 10px auto 0;
+        margin: 9px 0 0;
         color: #64748b;
         font-size: 14px;
+        font-weight: 700;
     }
 
     .register-card {
         background: #ffffff;
         border: 1px solid #d8e0ea;
-        border-radius: 18px;
+        border-radius: 14px;
         box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-        overflow: hidden;
     }
 
     .register-form {
-        padding: 28px;
+        padding: 24px;
     }
 
     .section-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: #21344d;
         margin-bottom: 4px;
+        color: #21344d;
+        font-size: 14px;
+        font-weight: 800;
     }
 
     .section-subtitle {
+        margin-bottom: 18px;
         color: #64748b;
         font-size: 13px;
-        margin-bottom: 18px;
+        font-weight: 700;
     }
 
     .role-switch {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 4px;
-        background: #eef3f8;
-        border-radius: 14px;
-        padding: 4px;
         margin-bottom: 22px;
+        padding: 4px;
+        background: #eef3f8;
+        border-radius: 12px;
     }
 
     .role-switch a {
-        text-align: center;
-        padding: 12px 10px;
-        border-radius: 12px;
-        text-decoration: none;
-        color: #5b6d82;
-        font-weight: 700;
-        font-size: 13px;
-        transition: all 0.2s ease;
-        background: transparent;
+        padding: 9px 10px;
         border: 1px solid transparent;
+        border-radius: 9px;
+        color: #5b6d82;
+        font-size: 13px;
+        font-weight: 800;
+        text-align: center;
+        text-decoration: none;
     }
 
     .role-switch a.active,
     .role-switch a:hover {
         background: #ffffff;
-        color: var(--navy);
         border-color: rgba(59, 110, 168, 0.22);
+        color: #1d2f47;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
     }
 
     .form-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 14px;
-        margin-bottom: 18px;
     }
 
     .form-group {
-        margin-bottom: 18px;
+        margin-bottom: 17px;
     }
 
     .form-label {
         display: block;
-        margin-bottom: 8px;
-        font-weight: 600;
+        margin-bottom: 7px;
         color: #27384d;
         font-size: 13px;
+        font-weight: 800;
     }
 
     .form-control,
     .form-select {
         width: 100%;
+        height: 40px;
         border: 1px solid #d8e0ea;
-        border-radius: 12px;
-        padding: 12px 14px;
+        border-radius: 9px;
+        background: #ffffff;
+        color: #1f2a37;
         font-size: 14px;
-        background: #fbfdff;
+        padding: 9px 12px;
     }
 
     .form-control:focus,
     .form-select:focus {
         border-color: #8fb1df;
-        box-shadow: 0 0 0 0.2rem rgba(31, 90, 166, 0.14);
+        box-shadow: 0 0 0 0.18rem rgba(31, 90, 166, 0.14);
     }
 
     .panel-title {
-        margin: 0 0 16px;
-        font-size: 15px;
-        font-weight: 700;
-        color: #24364e;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #e7edf5;
-    }
-
-    .divider {
-        height: 1px;
-        background: #e7edf5;
-        margin: 18px 0;
+        margin: 4px 0 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e7edf5;
+        color: #1d2f47;
+        font-size: 14px;
+        font-weight: 800;
     }
 
     .btn-register {
         width: 100%;
-        padding: 14px;
-        background: var(--accent);
-        color: white;
+        min-height: 44px;
+        margin-top: 8px;
         border: none;
-        border-radius: 12px;
-        font-weight: 700;
-        font-size: 15px;
+        border-radius: 9px;
+        background: #1d5a91;
+        color: #ffffff;
         cursor: pointer;
-        transition: background 0.2s ease;
+        font-size: 14px;
+        font-weight: 800;
     }
 
     .btn-register:hover {
-        background: #315f92;
+        background: #164a78;
     }
 
     .register-link {
         margin-top: 18px;
-        text-align: center;
         color: #64748b;
         font-size: 14px;
+        text-align: center;
     }
 
     .register-link a {
-        color: var(--accent);
+        color: #1d5a91;
+        font-weight: 800;
         text-decoration: none;
-        font-weight: 700;
-    }
-
-    .register-link a:hover {
-        text-decoration: underline;
-    }
-
-    .id-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 14px;
-        border-radius: 12px;
-        background: #f2f6fa;
-        border: 1px dashed #cbd6e4;
-        color: #49617f;
-        font-size: 13px;
-        font-weight: 600;
     }
 
     .alert {
@@ -208,17 +185,23 @@
 
     .error-message {
         color: #b42318;
-        font-size: 13px;
+        font-size: 12px;
+        font-weight: 700;
         margin-top: 6px;
     }
 
     @media (max-width: 768px) {
-        .form-row {
-            grid-template-columns: 1fr;
+        .register-container {
+            max-width: 100%;
         }
 
         .register-form {
-            padding: 22px;
+            padding: 20px;
+        }
+
+        .form-row {
+            grid-template-columns: 1fr;
+            gap: 0;
         }
     }
 </style>
@@ -228,7 +211,9 @@
 <div class="content-wrap">
     <div class="register-container">
         <div class="hero">
-            <div class="hero-badge">✈</div>
+            <div class="hero-badge">
+                <i class="fa-solid fa-plane"></i>
+            </div>
             <h1>Daftar Akun Baru</h1>
             <p>Bergabung dengan program AeroMiles</p>
         </div>
@@ -254,14 +239,17 @@
 
                 <form method="post" novalidate>
                     {% csrf_token %}
+                    {{ form.username }}
+
+                    <div class="form-group">
+                        <label for="id_email" class="form-label">Email <span class="text-danger">*</span></label>
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                            <div class="error-message">{{ form.email.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
                     <div class="form-row">
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label for="id_email" class="form-label">Email <span class="text-danger">*</span></label>
-                            {{ form.email }}
-                            {% if form.email.errors %}
-                                <div class="error-message">{{ form.email.errors.0 }}</div>
-                            {% endif %}
-                        </div>
                         <div class="form-group">
                             <label for="id_password1" class="form-label">Password <span class="text-danger">*</span></label>
                             {{ form.password1 }}
@@ -278,17 +266,28 @@
                         </div>
                     </div>
 
-                    <div class="divider"></div>
                     <div class="panel-title">Data Pribadi</div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="id_first_name" class="form-label">Nama Depan <span class="text-danger">*</span></label>
-                            {{ form.first_name }}
-                            {% if form.first_name.errors %}
-                                <div class="error-message">{{ form.first_name.errors.0 }}</div>
+                            <label for="id_salutation" class="form-label">Salutation <span class="text-danger">*</span></label>
+                            {{ form.salutation }}
+                            {% if form.salutation.errors %}
+                                <div class="error-message">{{ form.salutation.errors.0 }}</div>
                             {% endif %}
                         </div>
+                        <div></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_first_name" class="form-label">Nama Depan-Tengah <span class="text-danger">*</span></label>
+                        {{ form.first_name }}
+                        {% if form.first_name.errors %}
+                            <div class="error-message">{{ form.first_name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-row">
                         <div class="form-group">
                             <label for="id_last_name" class="form-label">Nama Belakang <span class="text-danger">*</span></label>
                             {{ form.last_name }}
@@ -297,21 +296,40 @@
                             {% endif %}
                         </div>
                         <div class="form-group">
-                            <label for="id_username" class="form-label">Username <span class="text-danger">*</span></label>
-                            {{ form.username }}
-                            {% if form.username.errors %}
-                                <div class="error-message">{{ form.username.errors.0 }}</div>
+                            <label for="id_nationality" class="form-label">Kewarganegaraan <span class="text-danger">*</span></label>
+                            {{ form.nationality }}
+                            {% if form.nationality.errors %}
+                                <div class="error-message">{{ form.nationality.errors.0 }}</div>
                             {% endif %}
-                        </div>
-                        <div class="form-group">
-                            <label for="id_phone_number" class="form-label">Nomor Telepon (Opsional)</label>
-                            {{ form.phone_number }}
                         </div>
                     </div>
 
-                    <div class="form-group" style="grid-column: 1 / -1;">
-                        <label class="form-label">ID Member</label>
-                        <div class="id-chip">ID Member akan digenerate otomatis oleh sistem.</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="id_country_code" class="form-label">Country Code <span class="text-danger">*</span></label>
+                            {{ form.country_code }}
+                            {% if form.country_code.errors %}
+                                <div class="error-message">{{ form.country_code.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            <label for="id_phone_number" class="form-label">Nomor HP <span class="text-danger">*</span></label>
+                            {{ form.phone_number }}
+                            {% if form.phone_number.errors %}
+                                <div class="error-message">{{ form.phone_number.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="id_birth_date" class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
+                            {{ form.birth_date }}
+                            {% if form.birth_date.errors %}
+                                <div class="error-message">{{ form.birth_date.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div></div>
                     </div>
 
                     {% if form.non_field_errors %}
