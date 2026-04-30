@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import F, Q
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -12,6 +13,8 @@ from .forms import (
     LoginForm,
     MemberRegistrationForm,
     StaffClaimUpdateForm,
+    StaffMemberCreateForm,
+    StaffMemberUpdateForm,
     StaffRegistrationForm,
     TransferMilesForm,
 )
@@ -361,6 +364,98 @@ def staff_transaction_report_view(request):
 
 
 @login_required(login_url='auth_system:login')
+def manage_members_list(request):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staff.')
+        return redirect('auth_system:dashboard')
+
+    search_query = request.GET.get('search', '').strip()
+    members = Member.objects.select_related('user').order_by('member_id')
+
+    if search_query:
+        members = members.filter(
+            Q(member_id__icontains=search_query) |
+            Q(user__email__icontains=search_query) |
+            Q(user__first_name__icontains=search_query) |
+            Q(user__last_name__icontains=search_query)
+        )
+
+    paginator = Paginator(members, 10)
+    members_page = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'staff/manage_member/manage_members.html', {
+        'staff': staff,
+        'members': members_page,
+        'search_query': search_query,
+    })
+
+
+@require_http_methods(["GET", "POST"])
+@login_required(login_url='auth_system:login')
+def add_member(request):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staff.')
+        return redirect('auth_system:dashboard')
+
+    if request.method == 'POST':
+        form = StaffMemberCreateForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Member baru berhasil ditambahkan.')
+            return redirect('auth_system:manage_members_list')
+    else:
+        form = StaffMemberCreateForm()
+
+    return render(request, 'staff/manage_member/add_member.html', {'form': form})
+
+
+@require_http_methods(["GET", "POST"])
+@login_required(login_url='auth_system:login')
+def edit_member(request, member_id):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staff.')
+        return redirect('auth_system:dashboard')
+
+    member = get_object_or_404(Member, member_id=member_id)
+
+    if request.method == 'POST':
+        form = StaffMemberUpdateForm(request.POST, member=member)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Data member berhasil diperbarui.')
+            return redirect('auth_system:manage_members_list')
+    else:
+        form = StaffMemberUpdateForm(
+            initial={
+                'email': member.user.email,
+                'first_name': member.user.first_name,
+                'last_name': member.user.last_name,
+                'phone_number': member.phone_number,
+            },
+            member=member,
+        )
+
+    return render(request, 'staff/manage_member/edit_member.html', {'form': form, 'member': member})
+
+
+@require_http_methods(["POST"])
+@login_required(login_url='auth_system:login')
+def delete_member(request, member_id):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staff.')
+        return redirect('auth_system:dashboard')
+
+    member = get_object_or_404(Member, member_id=member_id)
+    member.user.delete()
+    messages.success(request, f'Member {member.member_id} berhasil dihapus.')
+    return redirect('auth_system:manage_members_list')
+
+
+@login_required(login_url='auth_system:login')
 def member_transfer_list_view(request):
     member = _get_member(request.user)
     if not member:
@@ -690,18 +785,3 @@ def delete_member_identity_view(request, identity_id):
     identity.delete()
     messages.success(request, 'Identitas berhasil dihapus.')
     return redirect('auth_system:member_identities_list')
-
-def _get_member(user):
-    """Mengembalikan profil member atau None."""
-    try:
-        return Member.objects.get(user=user)
-    except Member.DoesNotExist:
-        return None
-
-
-def _get_staff(user):
-    """Mengembalikan profil staff atau None."""
-    try:
-        return Staff.objects.get(user=user)
-    except Staff.DoesNotExist:
-        return None

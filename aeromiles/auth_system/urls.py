@@ -25,8 +25,11 @@ urlpatterns = [
     path('staff/claims/', views.staff_claim_list_view, name='staff_claim_list'),
     path('staff/claims/edit/<int:claim_id>/', views.staff_claim_update_view, name='staff_claim_update'),
     path('staff/reports/transactions/', views.staff_transaction_report_view, name='staff_transaction_report'),
-
-    # Member: Transfer Miles
+    path('staff/members/', views.manage_members_list, name='manage_members_list'),
+    path('staff/members/add/', views.add_member, name='add_member'),
+    path('staff/members/edit/<str:member_id>/', views.edit_member, name='edit_member'),
+    path('staff/members/delete/<str:member_id>/', views.delete_member, name='delete_member'),
     path('member/transfer/', views.member_transfer_list_view, name='member_transfer_list'),
     path('member/transfer/add/', views.member_transfer_create_view, name='member_transfer_create'),
+    
 ]

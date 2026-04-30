@@ -235,6 +235,142 @@ class MemberRegistrationForm(UserCreationForm):
         return value
 
 
+class StaffMemberCreateForm(UserCreationForm):
+    """Form untuk staff menambahkan member baru."""
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Email'
+        })
+    )
+    first_name = forms.CharField(
+        max_length=50,
+        label='Nama Depan',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama depan'
+        })
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        label='Nama Belakang',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Belakang'
+        })
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nomor HP'
+        })
+    )
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'first_name', 'last_name', 'password1', 'password2')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['password1'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Password'})
+        self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Konfirmasi Password'})
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data['first_name']
+        user.last_name = self.cleaned_data['last_name']
+        if commit:
+            user.save()
+            Member.objects.create(
+                user=user,
+                member_id=Member.generate_member_id(),
+                country_code='+62',
+                phone_number=self.cleaned_data.get('phone_number', ''),
+            )
+        return user
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('Email sudah digunakan.')
+        return email
+
+    def clean_first_name(self):
+        return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
+
+    def clean_last_name(self):
+        return _sanitize_text(self.cleaned_data.get('last_name'), max_length=50)
+
+    def clean_phone_number(self):
+        return _sanitize_phone(self.cleaned_data.get('phone_number'))
+
+
+class StaffMemberUpdateForm(forms.Form):
+    """Form untuk staff memperbarui data member."""
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Email'
+        })
+    )
+    first_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Depan'
+        })
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Belakang'
+        })
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nomor HP'
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.member = kwargs.pop('member', None)
+        super().__init__(*args, **kwargs)
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email__iexact=email).exclude(pk=self.member.user.pk).exists():
+            raise forms.ValidationError('Email sudah digunakan.')
+        return email
+
+    def clean_first_name(self):
+        return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
+
+    def clean_last_name(self):
+        return _sanitize_text(self.cleaned_data.get('last_name'), max_length=50)
+
+    def clean_phone_number(self):
+        return _sanitize_phone(self.cleaned_data.get('phone_number'))
+
+    def save(self):
+        user = self.member.user
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data['first_name']
+        user.last_name = self.cleaned_data['last_name']
+        user.save(update_fields=['email', 'first_name', 'last_name'])
+        self.member.phone_number = self.cleaned_data['phone_number']
+        self.member.save(update_fields=['phone_number'])
+        return self.member
+
+
 class StaffRegistrationForm(UserCreationForm):
     """Form untuk registrasi Staff"""
     username = forms.CharField(required=False, widget=forms.HiddenInput())
