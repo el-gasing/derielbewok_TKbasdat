@@ -18,7 +18,7 @@ from .forms import (
     StaffRegistrationForm,
     TransferMilesForm,
 )
-from .models import ClaimMissingMiles, Identity, Member, Staff, TransferMiles
+from .models import ClaimMissingMiles, Identity, Maskapai, Member, Mitra, Penyedia, Staff, TransferMiles
 
 
 def _get_member(user):
@@ -51,6 +51,51 @@ def _next_transfer_id():
         return 'TRF000001'
     last_num = int(last_transfer.transfer_id.replace('TRF', ''))
     return f'TRF{last_num + 1:06d}'
+
+
+def _reward_catalog():
+    return [
+        {
+            'code': 'RWD-005',
+            'name': 'Upgrade Business Class',
+            'provider': 'Garuda Indonesia',
+            'miles': 15000,
+            'description': 'Upgrade dari economy class ke business class untuk rute domestik pilihan.',
+            'valid_from': date(2026, 1, 1),
+            'valid_until': date(2027, 1, 1),
+            'category': 'Flight',
+        },
+        {
+            'code': 'RWD-011',
+            'name': 'Akses Lounge 1x',
+            'provider': 'AeroMiles Lounge',
+            'miles': 3000,
+            'description': 'Akses satu kali ke lounge bandara partner sebelum penerbangan.',
+            'valid_from': date(2026, 2, 1),
+            'valid_until': date(2026, 12, 31),
+            'category': 'Airport',
+        },
+        {
+            'code': 'RWD-018',
+            'name': 'Voucher Hotel Partner',
+            'provider': 'AeroStay',
+            'miles': 22000,
+            'description': 'Potongan menginap untuk hotel partner AeroMiles di kota besar Indonesia.',
+            'valid_from': date(2026, 3, 1),
+            'valid_until': date(2026, 11, 30),
+            'category': 'Travel',
+        },
+        {
+            'code': 'RWD-002',
+            'name': 'Extra Baggage 10 Kg',
+            'provider': 'AeroMiles',
+            'miles': 5000,
+            'description': 'Tambahan bagasi 10 kg untuk penerbangan domestik tertentu.',
+            'valid_from': date(2025, 1, 1),
+            'valid_until': date(2025, 12, 31),
+            'category': 'Flight',
+        },
+    ]
 
 
 @require_http_methods(["GET", "POST"])
@@ -247,13 +292,24 @@ def staff_claim_update_view(request, claim_id):
         return redirect('auth_system:dashboard')
 
     claim = get_object_or_404(ClaimMissingMiles, id=claim_id)
+    old_status = claim.status
+    
     if request.method == 'POST':
         form = StaffClaimUpdateForm(request.POST, instance=claim)
         if form.is_valid():
             updated_claim = form.save(commit=False)
             updated_claim.approved_by = staff
             updated_claim.save()
-            messages.success(request, f'Claim {updated_claim.claim_id} berhasil diperbarui.')
+            
+            # Nambah total_miles member jika status berubah menjadi 'approved'
+            if old_status != 'approved' and updated_claim.status == 'approved':
+                member = updated_claim.member
+                member.total_miles += updated_claim.miles_amount
+                member.save()
+                messages.success(request, f'Claim {updated_claim.claim_id} berhasil disetujui. Miles sebesar {updated_claim.miles_amount:,} telah ditambahkan ke member.')
+            else:
+                messages.success(request, f'Claim {updated_claim.claim_id} berhasil diperbarui.')
+            
             return redirect('auth_system:staff_claim_list')
     else:
         form = StaffClaimUpdateForm(instance=claim)
@@ -469,54 +525,30 @@ def member_transfer_list_view(request):
 
 
 @login_required(login_url='auth_system:login')
+def profile_view(request):
+    member = _get_member(request.user)
+    staff = _get_staff(request.user)
+
+    if not member and not staff:
+        messages.error(request, 'Profil hanya tersedia untuk member atau staff.')
+        return redirect('auth_system:dashboard')
+
+    context = {
+        'member': member,
+        'staff': staff,
+        'profile_type': 'member' if member else 'staff',
+    }
+    return render(request, 'auth_system/profile.html', context)
+
+
+@login_required(login_url='auth_system:login')
 def member_redeem_view(request):
     member = _get_member(request.user)
     if not member:
         messages.error(request, 'Halaman ini hanya untuk member.')
         return redirect('auth_system:dashboard')
 
-    rewards = [
-        {
-            'code': 'RWD-005',
-            'name': 'Upgrade Business Class',
-            'provider': 'Garuda Indonesia',
-            'miles': 15000,
-            'description': 'Upgrade dari economy class ke business class untuk rute domestik pilihan.',
-            'valid_from': date(2026, 1, 1),
-            'valid_until': date(2027, 1, 1),
-            'category': 'Flight',
-        },
-        {
-            'code': 'RWD-011',
-            'name': 'Akses Lounge 1x',
-            'provider': 'AeroMiles Lounge',
-            'miles': 3000,
-            'description': 'Akses satu kali ke lounge bandara partner sebelum penerbangan.',
-            'valid_from': date(2026, 2, 1),
-            'valid_until': date(2026, 12, 31),
-            'category': 'Airport',
-        },
-        {
-            'code': 'RWD-018',
-            'name': 'Voucher Hotel Partner',
-            'provider': 'AeroStay',
-            'miles': 22000,
-            'description': 'Potongan menginap untuk hotel partner AeroMiles di kota besar Indonesia.',
-            'valid_from': date(2026, 3, 1),
-            'valid_until': date(2026, 11, 30),
-            'category': 'Travel',
-        },
-        {
-            'code': 'RWD-002',
-            'name': 'Extra Baggage 10 Kg',
-            'provider': 'AeroMiles',
-            'miles': 5000,
-            'description': 'Tambahan bagasi 10 kg untuk penerbangan domestik tertentu.',
-            'valid_from': date(2025, 1, 1),
-            'valid_until': date(2025, 12, 31),
-            'category': 'Flight',
-        },
-    ]
+    rewards = _reward_catalog()
     available_rewards = [
         reward for reward in rewards
         if reward['valid_until'] >= date.today()
@@ -543,6 +575,38 @@ def member_redeem_view(request):
         'redeem_history': redeem_history,
     }
     return render(request, 'member/redeem/member_redeem.html', context)
+
+
+@login_required(login_url='auth_system:login')
+def staff_rewards_view(request):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staff.')
+        return redirect('auth_system:dashboard')
+
+    rewards = _reward_catalog()
+    context = {
+        'staff': staff,
+        'rewards': rewards,
+        'active_rewards': [reward for reward in rewards if reward['valid_until'] >= date.today()],
+        'maskapai_list': Maskapai.objects.filter(is_active=True).order_by('name'),
+        'penyedia_list': Penyedia.objects.filter(is_active=True).order_by('name'),
+    }
+    return render(request, 'staff/reward/staff_rewards.html', context)
+
+
+@login_required(login_url='auth_system:login')
+def staff_partners_view(request):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staff.')
+        return redirect('auth_system:dashboard')
+
+    context = {
+        'staff': staff,
+        'partners': Mitra.objects.order_by('-is_active', 'name'),
+    }
+    return render(request, 'staff/partner/staff_partners.html', context)
 
 
 @login_required(login_url='auth_system:login')

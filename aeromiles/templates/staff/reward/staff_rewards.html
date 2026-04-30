@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Kelola Hadiah & Penyedia - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .catalog-shell {
+        max-width: 1180px;
+        margin: 0 auto;
+    }
+
+    .catalog-hero {
+        background: linear-gradient(135deg, #233247 0%, #365173 48%, #3b6ea8 100%);
+        color: #fff;
+        border-radius: 22px;
+        padding: 28px;
+        margin-bottom: 18px;
+        box-shadow: 0 18px 40px rgba(35, 50, 71, 0.18);
+    }
+
+    .catalog-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-bottom: 18px;
+    }
+
+    .catalog-card,
+    .list-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+
+    .catalog-card .card-head,
+    .list-card .card-head {
+        padding: 18px 20px;
+        border-bottom: 1px solid #e7edf5;
+        background: #f7faff;
+        font-weight: 800;
+        color: #233247;
+    }
+
+    .catalog-card .card-body,
+    .list-card .card-body {
+        padding: 18px 20px;
+    }
+
+    .reward-item {
+        padding: 16px 0;
+        border-bottom: 1px solid #e7edf5;
+    }
+
+    .reward-item:last-child {
+        border-bottom: none;
+    }
+
+    .reward-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: start;
+        margin-bottom: 10px;
+    }
+
+    .reward-code {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .reward-title {
+        margin: 4px 0 0;
+        color: #233247;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .reward-meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    .meta-chip {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #edf4fb;
+        color: #23415f;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .summary-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .summary-list li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid #e7edf5;
+        color: #475569;
+    }
+
+    .summary-list li:last-child {
+        border-bottom: none;
+    }
+
+    .summary-label {
+        font-weight: 700;
+        color: #233247;
+    }
+
+    @media (max-width: 992px) {
+        .catalog-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="catalog-shell">
+    <section class="catalog-hero">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+                <div class="hero-kicker" style="text-transform:uppercase; letter-spacing:.18em; font-size:11px; opacity:.75; margin-bottom:8px;">Staff Tools</div>
+                <h1 class="mb-2" style="font-size:30px; font-weight:800;">Kelola Hadiah & Penyedia</h1>
+                <p class="mb-0" style="max-width:68ch; color:rgba(255,255,255,.84);">Daftar reward aktif, maskapai, dan penyedia yang bisa dipantau dari navbar staff.</p>
+            </div>
+            <div class="meta-chip" style="background: rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.16);">
+                {{ active_rewards|length }} reward aktif
+            </div>
+        </div>
+    </section>
+
+    <div class="catalog-grid">
+        <section class="catalog-card">
+            <div class="card-head">Reward Aktif</div>
+            <div class="card-body">
+                {% for reward in active_rewards %}
+                    <article class="reward-item">
+                        <div class="reward-top">
+                            <div>
+                                <div class="reward-code">{{ reward.code }}</div>
+                                <h2 class="reward-title">{{ reward.name }}</h2>
+                            </div>
+                            <strong style="color:#1d2f47;">{{ reward.miles|floatformat:0 }} miles</strong>
+                        </div>
+                        <p class="mb-2" style="color:#475569;">{{ reward.description }}</p>
+                        <div class="reward-meta">
+                            <span class="meta-chip">{{ reward.provider }}</span>
+                            <span class="meta-chip">{{ reward.category }}</span>
+                            <span class="meta-chip">{{ reward.valid_from|date:'d M Y' }} - {{ reward.valid_until|date:'d M Y' }}</span>
+                        </div>
+                    </article>
+                {% empty %}
+                    <p class="mb-0 text-muted">Belum ada reward aktif.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="list-card">
+            <div class="card-head">Ringkasan Mitra Produksi</div>
+            <div class="card-body">
+                <h3 style="font-size:16px; font-weight:800; color:#233247; margin-bottom:10px;">Maskapai Aktif</h3>
+                <ul class="summary-list mb-4">
+                    {% for airline in maskapai_list %}
+                        <li><span class="summary-label">{{ airline.name }}</span><span>{{ airline.code }}</span></li>
+                    {% empty %}
+                        <li><span class="summary-label">Maskapai</span><span>Belum ada data</span></li>
+                    {% endfor %}
+                </ul>
+
+                <h3 style="font-size:16px; font-weight:800; color:#233247; margin-bottom:10px;">Penyedia Aktif</h3>
+                <ul class="summary-list">
+                    {% for provider in penyedia_list %}
+                        <li><span class="summary-label">{{ provider.name }}</span><span>{{ provider.code }}</span></li>
+                    {% empty %}
+                        <li><span class="summary-label">Penyedia</span><span>Belum ada data</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

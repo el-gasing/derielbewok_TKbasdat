@@ -161,23 +161,23 @@
 
             <nav class="nav-links" aria-label="Navigasi utama">
                 {% if user.is_authenticated %}
-                    <a href="{% url 'auth_system:dashboard' %}" class="nav-link">Dashboard</a>
+                    <a href="{% url 'auth_system:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
                     
                     {% if user_type == 'staff' %}
-                        <a href="{% url 'auth_system:manage_members_list' %}" class="nav-link">Kelola Member</a>
-                        <a href="{% url 'auth_system:staff_claim_list' %}" class="nav-link">Kelola Klaim</a>
-                        <a href="#" class="nav-link">Kelola Hadiah & Penyedia</a>
-                        <a href="#" class="nav-link">Kelola Mitra</a>
+                        <a href="{% url 'auth_system:manage_members_list' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_members_list' or request.resolver_match.url_name == 'add_member' or request.resolver_match.url_name == 'edit_member' or request.resolver_match.url_name == 'delete_member' %}active{% endif %}">Kelola Member</a>
+                        <a href="{% url 'auth_system:staff_claim_list' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_claim_list' or request.resolver_match.url_name == 'staff_claim_update' %}active{% endif %}">Kelola Klaim</a>
+                        <a href="{% url 'auth_system:staff_rewards' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_rewards' %}active{% endif %}">Kelola Hadiah & Penyedia</a>
+                        <a href="{% url 'auth_system:staff_partners' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_partners' %}active{% endif %}">Kelola Mitra</a>
                         <a href="{% url 'auth_system:staff_transaction_report' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_transaction_report' %}active{% endif %}">Laporan Transaksi</a>
-                        <a href="#" class="nav-link">Pengaturan Profil</a>
+                        <a href="{% url 'auth_system:profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">Pengaturan Profil</a>
                     {% else %}
-                        <a href="{% url 'auth_system:member_identities_list' %}" class="nav-link">Identitas Saya</a>
-                        <a href="{% url 'auth_system:member_claim_list' %}" class="nav-link">Klaim Miles</a>
-                        <a href="{% url 'auth_system:member_transfer_list' %}" class="nav-link">Transfer Miles</a>
+                        <a href="{% url 'auth_system:member_identities_list' %}" class="nav-link {% if request.resolver_match.url_name == 'member_identities_list' or request.resolver_match.url_name == 'add_member_identity' or request.resolver_match.url_name == 'edit_member_identity' %}active{% endif %}">Identitas Saya</a>
+                        <a href="{% url 'auth_system:member_claim_list' %}" class="nav-link {% if request.resolver_match.url_name == 'member_claim_list' or request.resolver_match.url_name == 'member_claim_create' or request.resolver_match.url_name == 'member_claim_detail' or request.resolver_match.url_name == 'member_claim_update' %}active{% endif %}">Klaim Miles</a>
+                        <a href="{% url 'auth_system:member_transfer_list' %}" class="nav-link {% if request.resolver_match.url_name == 'member_transfer_list' or request.resolver_match.url_name == 'member_transfer_create' %}active{% endif %}">Transfer Miles</a>
                         <a href="{% url 'auth_system:member_redeem' %}" class="nav-link {% if request.resolver_match.url_name == 'member_redeem' %}active{% endif %}">Redeem Hadiah</a>
                         <a href="{% url 'auth_system:member_package' %}" class="nav-link {% if request.resolver_match.url_name == 'member_package' %}active{% endif %}">Beli Package</a>
                         <a href="{% url 'auth_system:member_tier' %}" class="nav-link {% if request.resolver_match.url_name == 'member_tier' %}active{% endif %}">Info Tier</a>
-                        <a href="#" class="nav-link">Pengaturan Profil</a>
+                        <a href="{% url 'auth_system:profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">Pengaturan Profil</a>
                     {% endif %}
                         <form method="post" action="{% url 'auth_system:logout' %}" style="display:inline; margin:0;">
                             {% csrf_token %}

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Pengaturan Profil - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-shell {
+        max-width: 1120px;
+        margin: 0 auto;
+    }
+
+    .profile-hero {
+        background: linear-gradient(135deg, #233247 0%, #3b6ea8 100%);
+        color: #fff;
+        border-radius: 22px;
+        padding: 28px;
+        margin-bottom: 20px;
+        box-shadow: 0 18px 40px rgba(35, 50, 71, 0.18);
+    }
+
+    .profile-grid {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 18px;
+    }
+
+    .profile-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+        padding: 22px;
+    }
+
+    .profile-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .profile-list li {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 0;
+        border-bottom: 1px solid #e7edf5;
+        color: #475569;
+    }
+
+    .profile-list li:last-child {
+        border-bottom: none;
+    }
+
+    .profile-label {
+        font-weight: 700;
+        color: #233247;
+    }
+
+    .role-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    .stat-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .stat-box {
+        background: #f7faff;
+        border: 1px solid #d8e0ea;
+        border-radius: 16px;
+        padding: 16px;
+    }
+
+    .stat-box span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    .stat-box strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 20px;
+        color: #1d2f47;
+    }
+
+    @media (max-width: 992px) {
+        .profile-grid,
+        .stat-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-shell">
+    <section class="profile-hero">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+                <div class="hero-kicker" style="text-transform:uppercase; letter-spacing:.18em; font-size:11px; opacity:.75; margin-bottom:8px;">Akun</div>
+                <h1 class="mb-2" style="font-size:30px; font-weight:800;">Pengaturan Profil</h1>
+                <p class="mb-0" style="max-width:64ch; color:rgba(255,255,255,.84);">Ringkasan data akun yang sedang masuk. Halaman ini dibuat sebagai pusat navigasi profil sebelum fitur edit dipisah ke langkah berikutnya.</p>
+            </div>
+            <div class="role-pill">
+                <i class="fas fa-user"></i>
+                {% if profile_type == 'staff' %}Staff{% else %}Member{% endif %}
+            </div>
+        </div>
+    </section>
+
+    <div class="profile-grid">
+        <section class="profile-card">
+            <h2 style="font-size:18px; font-weight:800; color:#233247; margin-bottom:14px;">Informasi Akun</h2>
+            <ul class="profile-list">
+                <li><span class="profile-label">Nama</span><span>{{ user.get_full_name|default:user.username }}</span></li>
+                <li><span class="profile-label">Username</span><span>{{ user.username }}</span></li>
+                <li><span class="profile-label">Email</span><span>{{ user.email|default:'-' }}</span></li>
+                <li><span class="profile-label">Role</span><span>{% if profile_type == 'staff' %}Staff{% else %}Member{% endif %}</span></li>
+                <li><span class="profile-label">Status Login</span><span>Aktif</span></li>
+            </ul>
+        </section>
+
+        <section class="profile-card">
+            <h2 style="font-size:18px; font-weight:800; color:#233247; margin-bottom:14px;">Detail Profil</h2>
+            {% if profile_type == 'member' %}
+                <div class="stat-row">
+                    <div class="stat-box"><span>ID Member</span><strong>{{ member.member_id }}</strong></div>
+                    <div class="stat-box"><span>Total Miles</span><strong>{{ member.total_miles|floatformat:0 }}</strong></div>
+                    <div class="stat-box"><span>Telepon</span><strong>{{ member.phone_number|default:'Belum diatur' }}</strong></div>
+                    <div class="stat-box"><span>Kebangsaan</span><strong>{{ member.nationality }}</strong></div>
+                </div>
+            {% else %}
+                <div class="stat-row">
+                    <div class="stat-box"><span>ID Staff</span><strong>{{ staff.staff_id }}</strong></div>
+                    <div class="stat-box"><span>Departemen</span><strong>{{ staff.get_department_display }}</strong></div>
+                    <div class="stat-box"><span>Telepon</span><strong>{{ staff.phone_number|default:'Belum diatur' }}</strong></div>
+                    <div class="stat-box"><span>Maskapai</span><strong>{{ staff.maskapai|default:'Belum diatur' }}</strong></div>
+                </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

@@ -79,8 +79,10 @@
                         <div class="menu-section">
                             <h5><i class="fas fa-tasks"></i> Menu</h5>
                             <a href="{% url 'auth_system:staff_claim_list' %}" class="menu-button"><i class="fas fa-check-circle"></i> Approve Claims</a>
-                            <a href="#" class="menu-button"><i class="fas fa-users"></i> Manage Members</a>
-                            <a href="#" class="menu-button"><i class="fas fa-chart-bar"></i> Report</a>
+                               <a href="{% url 'auth_system:manage_members_list' %}" class="menu-button"><i class="fas fa-users"></i> Manage Members</a>
+                               <a href="{% url 'auth_system:staff_rewards' %}" class="menu-button"><i class="fas fa-gift"></i> Hadiah & Penyedia</a>
+                               <a href="{% url 'auth_system:staff_partners' %}" class="menu-button"><i class="fas fa-handshake"></i> Mitra</a>
+                               <a href="{% url 'auth_system:staff_transaction_report' %}" class="menu-button"><i class="fas fa-chart-bar"></i> Report</a>
                         </div>
                     {% else %}
                         <div class="menu-section"><h5><i class="fas fa-info-circle"></i> Info</h5><p>Tipe pengguna tidak ditentukan.</p></div>

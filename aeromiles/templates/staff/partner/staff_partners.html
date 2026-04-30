@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Kelola Mitra - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .partners-shell {
+        max-width: 1120px;
+        margin: 0 auto;
+    }
+
+    .partners-hero {
+        background: linear-gradient(135deg, #233247 0%, #3b6ea8 100%);
+        color: #fff;
+        border-radius: 22px;
+        padding: 28px;
+        margin-bottom: 20px;
+        box-shadow: 0 18px 40px rgba(35, 50, 71, 0.18);
+    }
+
+    .partners-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .partner-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+        padding: 20px;
+    }
+
+    .partner-code {
+        display: inline-flex;
+        margin-bottom: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #edf4fb;
+        color: #23415f;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .partner-title {
+        margin: 0 0 8px;
+        color: #233247;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .partner-meta {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .partner-meta li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid #e7edf5;
+        color: #475569;
+        font-size: 14px;
+    }
+
+    .partner-meta li:last-child {
+        border-bottom: none;
+    }
+
+    .partner-label {
+        font-weight: 700;
+        color: #233247;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .status-active {
+        background: #e7f8ee;
+        color: #0f7a3d;
+    }
+
+    .status-inactive {
+        background: #ffe8ea;
+        color: #bf1e2e;
+    }
+
+    @media (max-width: 992px) {
+        .partners-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="partners-shell">
+    <section class="partners-hero">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+                <div class="hero-kicker" style="text-transform:uppercase; letter-spacing:.18em; font-size:11px; opacity:.75; margin-bottom:8px;">Staff Tools</div>
+                <h1 class="mb-2" style="font-size:30px; font-weight:800;">Kelola Mitra</h1>
+                <p class="mb-0" style="max-width:68ch; color:rgba(255,255,255,.84);">Daftar mitra yang tersimpan di sistem untuk navigasi cepat dari navbar staff.</p>
+            </div>
+            <div class="status-pill status-active">{{ partners|length }} data</div>
+        </div>
+    </section>
+
+    <div class="partners-grid">
+        {% for partner in partners %}
+            <article class="partner-card">
+                <div class="partner-code">{{ partner.code }}</div>
+                <h2 class="partner-title">{{ partner.name }}</h2>
+                {% if partner.is_active %}
+                    <div class="status-pill status-active">Aktif</div>
+                {% else %}
+                    <div class="status-pill status-inactive">Nonaktif</div>
+                {% endif %}
+                <ul class="partner-meta mt-3">
+                    <li><span class="partner-label">Contact</span><span>{{ partner.contact_person|default:'-' }}</span></li>
+                    <li><span class="partner-label">Email</span><span>{{ partner.email }}</span></li>
+                    <li><span class="partner-label">Telepon</span><span>{{ partner.phone_number|default:'-' }}</span></li>
+                    <li><span class="partner-label">Dibuat</span><span>{{ partner.created_at|date:'d M Y' }}</span></li>
+                </ul>
+            </article>
+        {% empty %}
+            <div class="partner-card" style="grid-column: 1 / -1; text-align:center; color: var(--muted);">
+                Belum ada data mitra.
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
