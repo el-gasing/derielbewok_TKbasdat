@@ -86,9 +86,9 @@ CREATE TABLE AWARD_MILES_PACKAGE (
 
 -- 10. Tabel MEMBER_AWARD_MILES_PACKAGE
 CREATE TABLE MEMBER_AWARD_MILES_PACKAGE (
-    id_award_miles_package VARCHAR(20),
-    email_member VARCHAR(100),
-    timestamp TIMESTAMP,
+    id_award_miles_package VARCHAR(20) NOT NULL,
+    email_member VARCHAR(100) NOT NULL,
+    timestamp TIMESTAMP NOT NULL,
     PRIMARY KEY (id_award_miles_package, email_member, timestamp),
     CONSTRAINT fk_mamp_package FOREIGN KEY (id_award_miles_package) REFERENCES AWARD_MILES_PACKAGE(id),
     CONSTRAINT fk_mamp_member FOREIGN KEY (email_member) REFERENCES MEMBER(email) ON DELETE CASCADE
@@ -108,9 +108,9 @@ CREATE TABLE HADIAH (
 
 -- 12. Tabel REDEEM
 CREATE TABLE REDEEM (
-    email_member VARCHAR(100),
-    kode_hadiah VARCHAR(20),
-    timestamp TIMESTAMP,
+    email_member VARCHAR(100) NOT NULL,
+    kode_hadiah VARCHAR(20) NOT NULL,
+    timestamp TIMESTAMP NOT NULL,
     PRIMARY KEY (email_member, kode_hadiah, timestamp),
     CONSTRAINT fk_redeem_member FOREIGN KEY (email_member) REFERENCES MEMBER(email) ON DELETE CASCADE,
     CONSTRAINT fk_redeem_hadiah FOREIGN KEY (kode_hadiah) REFERENCES HADIAH(kode_hadiah)
@@ -166,14 +166,14 @@ CREATE TABLE TRANSFER (
 -- 1. TIER (4 Data)
 INSERT INTO TIER VALUES 
 ('T01', 'Blue', 0, 0), 
-('T02', 'Silver', 10, 10000), 
-('T03', 'Gold', 30, 30000), 
-('T04', 'Platinum', 50, 50000);
+('T02', 'Silver', 10, 15000), 
+('T03', 'Gold', 25, 40000), 
+('T04', 'Platinum', 50, 80000);
 
 -- 2. PENGGUNA (60 Data Otomatis)
 INSERT INTO PENGGUNA (email, password, salutation, first_mid_name, last_name, country_code, mobile_number, tanggal_lahir, kewarganegaraan)
 SELECT 
-    'user' || i || '@ui.ac.id', 'hashed_pass', 'Mr.', 'Mahasiswa', 'Fasilkom' || i, '+62', '0812345' || TO_CHAR(i, 'FM00'), '2004-01-01', 'Indonesia'
+    'user' || i || '@ui.ac.id', '$2b$12$KIXj9Y8rYfWnq3YHfYlG2OeJw4Y8Bq3xVY3xvA7WjF6qL8sQ9zK2W', 'Mr.', 'Mahasiswa', 'Fasilkom' || i, '+62', '0812345' || TO_CHAR(i, 'FM00'), '2004-01-01', 'Indonesia'
 FROM generate_series(1, 60) AS i;
 
 -- 3. PENYEDIA (8 Data)
@@ -229,7 +229,7 @@ FROM generate_series(1, 50) AS i;
 -- 9. STAF (10 Data Otomatis, pakai user 51 s/d 60)
 INSERT INTO STAF (email, id_staf, kode_maskapai)
 SELECT 
-    'user' || i || '@ui.ac.id', 'S' || TO_CHAR(i, 'FM0000'), 'GA'
+    'user' || i || '@ui.ac.id', 'S' || TO_CHAR(i - 50, 'FM0000'), 'GA'
 FROM generate_series(51, 60) AS i;
 
 -- 10. IDENTITAS (30 Data Otomatis, pakai member 1 s/d 30)
