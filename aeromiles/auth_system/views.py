@@ -24,7 +24,7 @@ from .forms import (
     _ensure_default_penyedia,
     _ensure_default_mitra,
 )
-from .models import ClaimMissingMiles, Identity, Member, Staff, TransferMiles, Hadiah, Penyedia
+from .models import ClaimMissingMiles, Hadiah, Identity, Maskapai, Member, Mitra, Penyedia, Staff, TransferMiles
 
 
 def _get_member(user):
@@ -57,6 +57,51 @@ def _next_transfer_id():
         return 'TRF000001'
     last_num = int(last_transfer.transfer_id.replace('TRF', ''))
     return f'TRF{last_num + 1:06d}'
+
+
+def _reward_catalog():
+    return [
+        {
+            'code': 'RWD-005',
+            'name': 'Upgrade Business Class',
+            'provider': 'Garuda Indonesia',
+            'miles': 15000,
+            'description': 'Upgrade dari economy class ke business class untuk rute domestik pilihan.',
+            'valid_from': date(2026, 1, 1),
+            'valid_until': date(2027, 1, 1),
+            'category': 'Flight',
+        },
+        {
+            'code': 'RWD-011',
+            'name': 'Akses Lounge 1x',
+            'provider': 'AeroMiles Lounge',
+            'miles': 3000,
+            'description': 'Akses satu kali ke lounge bandara partner sebelum penerbangan.',
+            'valid_from': date(2026, 2, 1),
+            'valid_until': date(2026, 12, 31),
+            'category': 'Airport',
+        },
+        {
+            'code': 'RWD-018',
+            'name': 'Voucher Hotel Partner',
+            'provider': 'AeroStay',
+            'miles': 22000,
+            'description': 'Potongan menginap untuk hotel partner AeroMiles di kota besar Indonesia.',
+            'valid_from': date(2026, 3, 1),
+            'valid_until': date(2026, 11, 30),
+            'category': 'Travel',
+        },
+        {
+            'code': 'RWD-002',
+            'name': 'Extra Baggage 10 Kg',
+            'provider': 'AeroMiles',
+            'miles': 5000,
+            'description': 'Tambahan bagasi 10 kg untuk penerbangan domestik tertentu.',
+            'valid_from': date(2025, 1, 1),
+            'valid_until': date(2025, 12, 31),
+            'category': 'Flight',
+        },
+    ]
 
 
 @login_required(login_url='auth_system:login')
@@ -151,7 +196,7 @@ def login_view(request):
     """View untuk login"""
     if request.user.is_authenticated:
         return redirect('auth_system:dashboard')
-    
+
     if request.method == 'POST':
         form = LoginForm(request, data=request.POST)
         if form.is_valid():
@@ -163,7 +208,7 @@ def login_view(request):
             messages.error(request, 'Username atau password salah.')
     else:
         form = LoginForm()
-    
+
     return render(request, 'auth_system/login.html', {'form': form})
 
 
@@ -180,19 +225,19 @@ def dashboard_view(request):
     """View untuk dashboard setelah login"""
     context = {}
     user = request.user
-    
+
     # Check if user is member
     member = _get_member(user)
     if member:
         context['user_type'] = 'member'
         context['member'] = member
-    
+
     # Check if user is staff
     staff = _get_staff(user)
     if staff:
         context['user_type'] = 'staff'
         context['staff'] = staff
-    
+
     return render(request, 'auth_system/dashboard.html', context)
 
 
@@ -249,12 +294,17 @@ def profile_settings_view(request):
     return render(request, 'auth_system/profile_settings.html', context)
 
 
+@login_required(login_url='auth_system:login')
+def profile_view(request):
+    return profile_settings_view(request)
+
+
 @require_http_methods(["GET", "POST"])
 def register_member_view(request):
     """View untuk registrasi Member"""
     if request.user.is_authenticated:
         return redirect('auth_system:dashboard')
-    
+
     if request.method == 'POST':
         form = MemberRegistrationForm(request.POST)
         if form.is_valid():
@@ -266,7 +316,7 @@ def register_member_view(request):
             messages.error(request, 'Ada kesalahan dalam registrasi. Silakan cek lagi.')
     else:
         form = MemberRegistrationForm()
-    
+
     return render(request, 'auth_system/register_member.html', {'form': form})
 
 
@@ -275,7 +325,7 @@ def register_staff_view(request):
     """View untuk registrasi Staff"""
     if request.user.is_authenticated:
         return redirect('auth_system:dashboard')
-    
+
     if request.method == 'POST':
         form = StaffRegistrationForm(request.POST)
         if form.is_valid():
@@ -287,7 +337,7 @@ def register_staff_view(request):
             messages.error(request, 'Ada kesalahan dalam registrasi. Silakan cek lagi.')
     else:
         form = StaffRegistrationForm()
-    
+
     return render(request, 'auth_system/register_staff.html', {'form': form})
 
 
@@ -529,48 +579,7 @@ def member_redeem_view(request):
         messages.error(request, 'Halaman ini hanya untuk member.')
         return redirect('auth_system:dashboard')
 
-    rewards = [
-        {
-            'code': 'RWD-005',
-            'name': 'Upgrade Business Class',
-            'provider': 'Garuda Indonesia',
-            'miles': 15000,
-            'description': 'Upgrade dari economy class ke business class untuk rute domestik pilihan.',
-            'valid_from': date(2026, 1, 1),
-            'valid_until': date(2027, 1, 1),
-            'category': 'Flight',
-        },
-        {
-            'code': 'RWD-011',
-            'name': 'Akses Lounge 1x',
-            'provider': 'AeroMiles Lounge',
-            'miles': 3000,
-            'description': 'Akses satu kali ke lounge bandara partner sebelum penerbangan.',
-            'valid_from': date(2026, 2, 1),
-            'valid_until': date(2026, 12, 31),
-            'category': 'Airport',
-        },
-        {
-            'code': 'RWD-018',
-            'name': 'Voucher Hotel Partner',
-            'provider': 'AeroStay',
-            'miles': 22000,
-            'description': 'Potongan menginap untuk hotel partner AeroMiles di kota besar Indonesia.',
-            'valid_from': date(2026, 3, 1),
-            'valid_until': date(2026, 11, 30),
-            'category': 'Travel',
-        },
-        {
-            'code': 'RWD-002',
-            'name': 'Extra Baggage 10 Kg',
-            'provider': 'AeroMiles',
-            'miles': 5000,
-            'description': 'Tambahan bagasi 10 kg untuk penerbangan domestik tertentu.',
-            'valid_from': date(2025, 1, 1),
-            'valid_until': date(2025, 12, 31),
-            'category': 'Flight',
-        },
-    ]
+    rewards = _reward_catalog()
     available_rewards = [
         reward for reward in rewards
         if reward['valid_until'] >= date.today()
@@ -597,6 +606,38 @@ def member_redeem_view(request):
         'redeem_history': redeem_history,
     }
     return render(request, 'member/redeem/member_redeem.html', context)
+
+
+@login_required(login_url='auth_system:login')
+def staff_rewards_view(request):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staff.')
+        return redirect('auth_system:dashboard')
+
+    rewards = _reward_catalog()
+    context = {
+        'staff': staff,
+        'rewards': rewards,
+        'active_rewards': [reward for reward in rewards if reward['valid_until'] >= date.today()],
+        'maskapai_list': Maskapai.objects.filter(is_active=True).order_by('name'),
+        'penyedia_list': Penyedia.objects.filter(is_active=True).order_by('name'),
+    }
+    return render(request, 'staff/reward/staff_rewards.html', context)
+
+
+@login_required(login_url='auth_system:login')
+def staff_partners_view(request):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staff.')
+        return redirect('auth_system:dashboard')
+
+    context = {
+        'staff': staff,
+        'partners': Mitra.objects.order_by('-is_active', 'name'),
+    }
+    return render(request, 'staff/partner/staff_partners.html', context)
 
 
 @login_required(login_url='auth_system:login')
@@ -853,23 +894,23 @@ def staff_hadiah_list_view(request):
 
     _ensure_default_penyedia()
     _ensure_default_mitra()
-    
+
     # Filter berdasarkan parameter query
     hadiah_list = Hadiah.objects.select_related('penyedia', 'mitra').all().order_by('-created_at')
-    
+
     # Filter berdasarkan penyedia
     penyedia_id = request.GET.get('penyedia', '')
     if penyedia_id:
         hadiah_list = hadiah_list.filter(penyedia_id=penyedia_id)
-    
+
     # Filter berdasarkan status keaktifan
     status = request.GET.get('status', '')
     if status:
         hadiah_list = hadiah_list.filter(status=status)
-    
+
     # Get semua penyedia aktif untuk dropdown filter
     penyedia_list = Penyedia.objects.filter(is_active=True).values_list('id', 'name').order_by('name')
-    
+
     context = {
         'hadiah_list': hadiah_list,
         'penyedia_list': penyedia_list,
@@ -891,7 +932,7 @@ def staff_hadiah_create_view(request):
 
     _ensure_default_penyedia()
     _ensure_default_mitra()
-    
+
     if request.method == 'POST':
         form = HadiahForm(request.POST)
         if form.is_valid():
@@ -900,7 +941,7 @@ def staff_hadiah_create_view(request):
             return redirect('auth_system:staff_hadiah_list')
     else:
         form = HadiahForm()
-    
+
     context = {
         'form': form,
         'staff': staff,
@@ -916,9 +957,9 @@ def staff_hadiah_detail_view(request, hadiah_id):
     if not staff:
         messages.error(request, 'Halaman ini hanya untuk staf.')
         return redirect('auth_system:dashboard')
-    
+
     hadiah = get_object_or_404(Hadiah.objects.select_related('penyedia', 'mitra'), id=hadiah_id)
-    
+
     context = {
         'hadiah': hadiah,
         'staff': staff,
@@ -934,9 +975,9 @@ def staff_hadiah_update_view(request, hadiah_id):
     if not staff:
         messages.error(request, 'Halaman ini hanya untuk staf.')
         return redirect('auth_system:dashboard')
-    
+
     hadiah = get_object_or_404(Hadiah.objects.select_related('penyedia', 'mitra'), id=hadiah_id)
-    
+
     if request.method == 'POST':
         form = HadiahForm(request.POST, instance=hadiah)
         if form.is_valid():
@@ -945,7 +986,7 @@ def staff_hadiah_update_view(request, hadiah_id):
             return redirect('auth_system:staff_hadiah_detail', hadiah_id=hadiah.id)
     else:
         form = HadiahForm(instance=hadiah)
-    
+
     context = {
         'form': form,
         'hadiah': hadiah,
@@ -963,7 +1004,7 @@ def staff_hadiah_delete_view(request, hadiah_id):
     if not staff:
         messages.error(request, 'Halaman ini hanya untuk staf.')
         return redirect('auth_system:dashboard')
-    
+
     hadiah = get_object_or_404(Hadiah.objects.select_related('penyedia', 'mitra'), id=hadiah_id)
     nama_hadiah = hadiah.nama_hadiah
 
@@ -975,7 +1016,7 @@ def staff_hadiah_delete_view(request, hadiah_id):
         hadiah.delete()
         messages.success(request, f'Hadiah "{nama_hadiah}" berhasil dihapus.')
         return redirect('auth_system:staff_hadiah_list')
-    
+
     context = {
         'hadiah': hadiah,
         'staff': staff,

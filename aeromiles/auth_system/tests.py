@@ -148,6 +148,55 @@ class AuthAndMilesWorkflowTests(TestCase):
 		self.assertEqual(claim.status, 'approved')
 		self.assertEqual(claim.approved_by, self.staff)
 
+	def test_staff_member_crud(self):
+		self.client.login(username='staff1', password='staffpass123')
+
+		list_response = self.client.get(reverse('auth_system:manage_members_list'))
+		self.assertEqual(list_response.status_code, 200)
+
+		create_response = self.client.post(
+			reverse('auth_system:add_member'),
+			data={
+				'username': 'newmember',
+				'email': 'newmember@example.com',
+				'first_name': 'New',
+				'last_name': 'Member',
+				'password1': 'newmemberpass123',
+				'password2': 'newmemberpass123',
+				'phone_number': '081234567890',
+			},
+			follow=True,
+		)
+		self.assertEqual(create_response.status_code, 200)
+		self.assertContains(create_response, 'berhasil ditambahkan.')
+
+		member = Member.objects.get(user__email='newmember@example.com')
+		self.assertEqual(member.user.first_name, 'New')
+
+		edit_response = self.client.post(
+			reverse('auth_system:edit_member', args=[member.member_id]),
+			data={
+				'email': 'updatedmember@example.com',
+				'first_name': 'Updated',
+				'last_name': 'Member',
+				'phone_number': '089876543210',
+			},
+			follow=True,
+		)
+		self.assertEqual(edit_response.status_code, 200)
+		self.assertContains(edit_response, 'berhasil diperbarui.')
+
+		member.refresh_from_db()
+		self.assertEqual(member.user.email, 'updatedmember@example.com')
+		self.assertEqual(member.user.first_name, 'Updated')
+
+		delete_response = self.client.post(
+			reverse('auth_system:delete_member', args=[member.member_id]),
+			follow=True,
+		)
+		self.assertEqual(delete_response.status_code, 200)
+		self.assertFalse(Member.objects.filter(member_id=member.member_id).exists())
+
 	def test_member_transfer_create_and_read(self):
 		self.client.login(username='member1', password='memberpass123')
 

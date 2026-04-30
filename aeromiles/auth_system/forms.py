@@ -186,7 +186,7 @@ class LoginForm(AuthenticationForm):
             'placeholder': 'Password'
         })
     )
-    
+
     class Meta:
         model = User
         fields = ('username', 'password')
@@ -250,23 +250,23 @@ class MemberRegistrationForm(UserCreationForm):
         choices=[('', 'Pilih negara')] + NATIONALITY_CHOICES,
         widget=forms.Select(attrs={'class': 'form-select'})
     )
-    
+
     class Meta:
         model = User
         fields = ('username', 'email', 'first_name', 'last_name', 'password1', 'password2')
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['password1'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Password'})
         self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Konfirmasi Password'})
-    
+
     def save(self, commit=True):
         user = super().save(commit=False)
         user.username = self.cleaned_data['username']
         user.email = self.cleaned_data['email']
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
-        
+
         if commit:
             user.save()
             # Create associated Member profile with auto-generated member_id
@@ -279,7 +279,7 @@ class MemberRegistrationForm(UserCreationForm):
                 birth_date=self.cleaned_data['birth_date'],
                 nationality=self.cleaned_data['nationality']
             )
-        
+
         return user
 
     def clean_username(self):
@@ -299,6 +299,142 @@ class MemberRegistrationForm(UserCreationForm):
         if value and value > date.today():
             raise forms.ValidationError('Tanggal lahir tidak valid.')
         return value
+
+
+class StaffMemberCreateForm(UserCreationForm):
+    """Form untuk staff menambahkan member baru."""
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Email'
+        })
+    )
+    first_name = forms.CharField(
+        max_length=50,
+        label='Nama Depan',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama depan'
+        })
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        label='Nama Belakang',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Belakang'
+        })
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nomor HP'
+        })
+    )
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'first_name', 'last_name', 'password1', 'password2')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['password1'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Password'})
+        self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Konfirmasi Password'})
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data['first_name']
+        user.last_name = self.cleaned_data['last_name']
+        if commit:
+            user.save()
+            Member.objects.create(
+                user=user,
+                member_id=Member.generate_member_id(),
+                country_code='+62',
+                phone_number=self.cleaned_data.get('phone_number', ''),
+            )
+        return user
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('Email sudah digunakan.')
+        return email
+
+    def clean_first_name(self):
+        return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
+
+    def clean_last_name(self):
+        return _sanitize_text(self.cleaned_data.get('last_name'), max_length=50)
+
+    def clean_phone_number(self):
+        return _sanitize_phone(self.cleaned_data.get('phone_number'))
+
+
+class StaffMemberUpdateForm(forms.Form):
+    """Form untuk staff memperbarui data member."""
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Email'
+        })
+    )
+    first_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Depan'
+        })
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Belakang'
+        })
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nomor HP'
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.member = kwargs.pop('member', None)
+        super().__init__(*args, **kwargs)
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email__iexact=email).exclude(pk=self.member.user.pk).exists():
+            raise forms.ValidationError('Email sudah digunakan.')
+        return email
+
+    def clean_first_name(self):
+        return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
+
+    def clean_last_name(self):
+        return _sanitize_text(self.cleaned_data.get('last_name'), max_length=50)
+
+    def clean_phone_number(self):
+        return _sanitize_phone(self.cleaned_data.get('phone_number'))
+
+    def save(self):
+        user = self.member.user
+        user.email = self.cleaned_data['email']
+        user.first_name = self.cleaned_data['first_name']
+        user.last_name = self.cleaned_data['last_name']
+        user.save(update_fields=['email', 'first_name', 'last_name'])
+        self.member.phone_number = self.cleaned_data['phone_number']
+        self.member.save(update_fields=['phone_number'])
+        return self.member
 
 
 class StaffRegistrationForm(UserCreationForm):
@@ -356,11 +492,11 @@ class StaffRegistrationForm(UserCreationForm):
         empty_label='Pilih maskapai',
         widget=forms.Select(attrs={'class': 'form-select'})
     )
-    
+
     class Meta:
         model = User
         fields = ('username', 'email', 'first_name', 'last_name', 'password1', 'password2')
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _ensure_default_maskapai()
@@ -368,14 +504,14 @@ class StaffRegistrationForm(UserCreationForm):
         self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Konfirmasi Password'})
         self.fields['maskapai'].queryset = Maskapai.objects.filter(is_active=True).order_by('name')
         self.fields['maskapai'].label_from_instance = lambda obj: f"{obj.code} - {obj.name}"
-    
+
     def save(self, commit=True):
         user = super().save(commit=False)
         user.username = self.cleaned_data['username']
         user.email = self.cleaned_data['email']
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']
-        
+
         if commit:
             user.save()
             # Create associated Staff profile with auto-generated staff_id
@@ -390,7 +526,7 @@ class StaffRegistrationForm(UserCreationForm):
                 maskapai=self.cleaned_data['maskapai'],
                 department='operations'
             )
-        
+
         return user
 
     def clean_username(self):
@@ -843,7 +979,7 @@ class IdentityForm(forms.ModelForm):
 
 class HadiahForm(forms.ModelForm):
     """Form untuk membuat/mengedit Hadiah"""
-    
+
     class Meta:
         model = Hadiah
         fields = (
@@ -915,7 +1051,7 @@ class HadiahForm(forms.ModelForm):
 
         kode = _sanitize_text(self.cleaned_data.get('kode_hadiah'), max_length=20).upper()
         return kode or Hadiah.generate_kode_hadiah()
-    
+
     def clean_nama_hadiah(self):
         return _sanitize_text(self.cleaned_data.get('nama_hadiah'), max_length=100)
 
@@ -927,7 +1063,7 @@ class HadiahForm(forms.ModelForm):
         if miles is not None and miles <= 0:
             raise forms.ValidationError('Miles dibutuhkan harus lebih dari 0.')
         return miles
-    
+
     def clean(self):
         cleaned = super().clean()
         tanggal_mulai = cleaned.get('tanggal_valid_mulai')

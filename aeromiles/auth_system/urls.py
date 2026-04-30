@@ -8,6 +8,7 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
+    path('profile/', views.profile_view, name='profile'),
     path('profile/settings/', views.profile_settings_view, name='profile_settings'),
     path('register/member/', views.register_member_view, name='register_member'),
     path('register/staff/', views.register_staff_view, name='register_staff'),
@@ -29,8 +30,10 @@ urlpatterns = [
     path('member/claims/<int:claim_id>/delete/', views.member_claim_delete_view, name='member_claim_delete'),
     path('staff/claims/', views.staff_claim_list_view, name='staff_claim_list'),
     path('staff/claims/edit/<int:claim_id>/', views.staff_claim_update_view, name='staff_claim_update'),
+    path('staff/rewards/', views.staff_rewards_view, name='staff_rewards'),
+    path('staff/partners/', views.staff_partners_view, name='staff_partners'),
     path('staff/reports/transactions/', views.staff_transaction_report_view, name='staff_transaction_report'),
-    
+
     # Staff: Hadiah (Reward/Prize) Management
     path('staff/hadiah/', views.staff_hadiah_list_view, name='staff_hadiah_list'),
     path('staff/hadiah/create/', views.staff_hadiah_create_view, name='staff_hadiah_create'),

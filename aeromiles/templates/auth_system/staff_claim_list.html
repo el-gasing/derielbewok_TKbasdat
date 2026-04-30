@@ -1,36 +1,129 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Claim Staff - AeroMiles</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h2 class="mb-0">Manajemen Claim Missing Miles</h2>
-            <small class="text-muted">Staff: {{ staff.staff_id }}</small>
+
+{% block title %}Manajemen Claim Missing Miles - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-container { max-width: 1120px; margin: 0 auto; }
+    .hero-panel {
+        background: linear-gradient(135deg, #233247 0%, #365173 55%, #3b6ea8 100%);
+        color: #fff;
+        border-radius: 22px;
+        padding: 28px;
+        box-shadow: 0 18px 40px rgba(35, 50, 71, 0.18);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 22px;
+    }
+    .hero-panel::after {
+        content: "";
+        position: absolute;
+        right: -40px;
+        top: -30px;
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+    }
+    .hero-top { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; position:relative; z-index:1; }
+    .hero-kicker { text-transform: uppercase; letter-spacing: .18em; font-size: 11px; opacity:.75; margin-bottom: 8px; }
+    .hero-title { margin:0; font-size: 30px; font-weight: 800; }
+    .hero-subtitle { margin:10px 0 0; color: rgba(255,255,255,.84); max-width: 56ch; }
+    .hero-meta { display:flex; gap:12px; flex-wrap:wrap; margin-top:18px; }
+    .meta-chip {
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.14);
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .page-actions { display:flex; gap:12px; flex-wrap:wrap; }
+    .primary-button {
+        display:inline-flex; align-items:center; justify-content:center; gap:8px;
+        padding: 11px 18px; border-radius: 12px; text-decoration:none; font-weight:800;
+        background: #fff; color: #233247; box-shadow: 0 10px 24px rgba(0,0,0,.14);
+        transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .primary-button:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(0,0,0,.18); color:#233247; }
+    .secondary-button {
+        display:inline-flex; align-items:center; justify-content:center; gap:8px;
+        padding: 11px 18px; border-radius: 12px; text-decoration:none; font-weight:700;
+        border: 1px solid rgba(255,255,255,.18); color:#fff; background: rgba(255,255,255,.08);
+        transition: transform .18s ease, background .18s ease, border-color .18s ease;
+    }
+    .secondary-button:hover { transform: translateY(-1px); background: rgba(255,255,255,.14); color:#fff; }
+    .table-card {
+        background: var(--surface); border: 1px solid var(--line); border-radius: 22px;
+        box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08); overflow: hidden;
+    }
+    .table-card .table { margin-bottom: 0; }
+    .table-card thead th {
+        background: #f6f9fc; color: #334155; font-size: 12px; text-transform: uppercase;
+        letter-spacing: .08em; border-bottom: 1px solid var(--line); padding: 16px 18px;
+    }
+    .table-card td { padding: 16px 18px; vertical-align: middle; }
+    .table-card tbody tr:hover { background: #f8fbff; }
+    .badge-status {
+        display:inline-flex; align-items:center; gap:6px; padding: 7px 12px; border-radius: 999px;
+        font-size: 12px; font-weight: 800;
+    }
+    .badge-pending { background:#fff7e6; color:#9a6700; }
+    .badge-approved, .badge-completed, .badge-active { background:#e7f8ee; color:#0f7a3d; }
+    .badge-rejected, .badge-cancelled, .badge-expired { background:#ffe8ea; color:#bf1e2e; }
+    .badge-processed { background:#e8f1ff; color:#2257a3; }
+    .empty-state {
+        text-align:center; padding: 42px 22px; color: var(--muted);
+    }
+    .empty-icon {
+        width: 64px; height:64px; margin: 0 auto 14px; border-radius: 18px; display:grid; place-items:center;
+        background: linear-gradient(135deg, rgba(59,110,168,.16), rgba(35,50,71,.12)); color:#233247; font-size: 26px;
+    }
+    @media (max-width: 992px) {
+        .hero-top { flex-direction: column; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <section class="hero-panel">
+        <div class="hero-top">
+            <div>
+                <div class="hero-kicker">Staff Claim</div>
+                <h1 class="hero-title">Manajemen Claim Missing Miles</h1>
+                <p class="hero-subtitle">Tampilan ini disamakan dengan gaya halaman member agar navigasi, kartu, dan aksi terasa konsisten di seluruh area claim.</p>
+                <div class="hero-meta">
+                    <span class="meta-chip">Staff ID: {{ staff.staff_id }}</span>
+                    <span class="meta-chip">Total Claim: {{ claims|length }}</span>
+                </div>
+            </div>
+            <div class="page-actions">
+                <a href="{% url 'auth_system:dashboard' %}" class="secondary-button">Dashboard</a>
+                <a href="{% url 'auth_system:staff_transaction_report' %}" class="primary-button">Laporan Transaksi</a>
+            </div>
         </div>
-        <a href="{% url 'auth_system:dashboard' %}" class="btn btn-outline-secondary">Dashboard</a>
-    </div>
+    </section>
 
     {% if messages %}
         {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         {% endfor %}
     {% endif %}
 
-    <div class="card shadow-sm">
+    <div class="table-card">
         <div class="table-responsive">
-            <table class="table table-striped mb-0">
+            <table class="table mb-0">
                 <thead>
                     <tr>
                         <th>ID Claim</th>
                         <th>Member</th>
                         <th>Flight</th>
+                        <th>Tanggal</th>
                         <th>Miles</th>
                         <th>Status</th>
                         <th>Aksi</th>
@@ -39,18 +132,34 @@
                 <tbody>
                     {% for claim in claims %}
                         <tr>
-                            <td>{{ claim.claim_id }}</td>
+                            <td><strong>{{ claim.claim_id }}</strong></td>
                             <td>{{ claim.member.member_id }} - {{ claim.member.user.username }}</td>
-                            <td>{{ claim.flight_number }} ({{ claim.flight_date }})</td>
+                            <td>{{ claim.flight_number }}</td>
+                            <td>{{ claim.flight_date }}</td>
                             <td>{{ claim.miles_amount }}</td>
-                            <td><span class="badge text-bg-info">{{ claim.get_status_display }}</span></td>
+                            <td>
+                                {% if claim.status == 'pending' %}
+                                    <span class="badge-status badge-pending">{{ claim.get_status_display }}</span>
+                                {% elif claim.status == 'approved' %}
+                                    <span class="badge-status badge-approved">{{ claim.get_status_display }}</span>
+                                {% elif claim.status == 'rejected' %}
+                                    <span class="badge-status badge-rejected">{{ claim.get_status_display }}</span>
+                                {% else %}
+                                    <span class="badge-status badge-processed">{{ claim.get_status_display }}</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 <a href="{% url 'auth_system:staff_claim_update' claim.id %}" class="btn btn-sm btn-outline-primary">Update</a>
                             </td>
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Belum ada claim.</td>
+                            <td colspan="7">
+                                <div class="empty-state">
+                                    <div class="empty-icon">✈</div>
+                                    <div>Belum ada claim missing miles.</div>
+                                </div>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -58,6 +167,4 @@
         </div>
     </div>
 </div>
-<script src="{% static 'auth_system/js/app.js' %}" defer></script>
-</body>
-</html>
+{% endblock %}
