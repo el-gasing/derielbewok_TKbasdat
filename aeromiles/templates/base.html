@@ -168,7 +168,7 @@
                         <a href="{% url 'auth_system:staff_claim_list' %}" class="nav-link">Kelola Klaim</a>
                         <a href="#" class="nav-link">Kelola Hadiah & Penyedia</a>
                         <a href="#" class="nav-link">Kelola Mitra</a>
-                        <a href="#" class="nav-link">Laporan Transaksi</a>
+                        <a href="{% url 'auth_system:staff_transaction_report' %}" class="nav-link {% if request.resolver_match.url_name == 'staff_transaction_report' %}active{% endif %}">Laporan Transaksi</a>
                         <a href="#" class="nav-link">Pengaturan Profil</a>
                     {% else %}
                         <a href="{% url 'auth_system:member_identities_list' %}" class="nav-link">Identitas Saya</a>

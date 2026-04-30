@@ -33,6 +33,7 @@ urlpatterns = [
     # Staff: Claim Management
     path('staff/claims/', views.staff_claim_list_view, name='staff_claim_list'),
     path('staff/claims/edit/<int:claim_id>/', views.staff_claim_update_view, name='staff_claim_update'),
+    path('staff/reports/transactions/', views.staff_transaction_report_view, name='staff_transaction_report'),
 
     # Member: Transfer Miles
     path('member/transfer/', views.member_transfer_list_view, name='member_transfer_list'),

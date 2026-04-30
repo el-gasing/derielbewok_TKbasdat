@@ -480,6 +480,108 @@ def staff_claim_update_view(request, claim_id):
     return render(request, 'staff/claim/staff_claim_form.html', {'form': form, 'claim': claim})
 
 
+@staff_required
+@require_http_methods(["GET"])
+def staff_transaction_report_view(request):
+    summary = {
+        'total_miles': '27,500',
+        'monthly_redeem': '3,000',
+        'approved_claims': '2,500',
+    }
+    transactions = [
+        {
+            'type': 'Transfer',
+            'icon': 'fa-right-left',
+            'member': 'John W. Doe',
+            'email': 'john@example.com',
+            'miles': '-5,000',
+            'is_positive': False,
+            'timestamp': '2025-01-15 10:30',
+            'can_delete': True,
+        },
+        {
+            'type': 'Redeem',
+            'icon': 'fa-gift',
+            'member': 'John W. Doe',
+            'email': 'john@example.com',
+            'miles': '-3,000',
+            'is_positive': False,
+            'timestamp': '2025-01-20 16:00',
+            'can_delete': True,
+        },
+        {
+            'type': 'Package',
+            'icon': 'fa-cart-shopping',
+            'member': 'Jane Smith',
+            'email': 'jane@example.com',
+            'miles': '+5,000',
+            'is_positive': True,
+            'timestamp': '2025-02-01 09:15',
+            'can_delete': True,
+        },
+        {
+            'type': 'Klaim',
+            'icon': 'fa-plane',
+            'member': 'Budi A. Santoso',
+            'email': 'budi@example.com',
+            'miles': '+2,500',
+            'is_positive': True,
+            'timestamp': '2025-02-05 11:45',
+            'can_delete': False,
+        },
+        {
+            'type': 'Transfer',
+            'icon': 'fa-right-left',
+            'member': 'Budi A. Santoso',
+            'email': 'budi@example.com',
+            'miles': '-2,000',
+            'is_positive': False,
+            'timestamp': '2025-02-10 14:00',
+            'can_delete': True,
+        },
+        {
+            'type': 'Package',
+            'icon': 'fa-cart-shopping',
+            'member': 'John W. Doe',
+            'email': 'john@example.com',
+            'miles': '+10,000',
+            'is_positive': True,
+            'timestamp': '2025-03-01 08:00',
+            'can_delete': True,
+        },
+    ]
+    top_members = [
+        {
+            'rank': 1,
+            'name': 'John W. Doe',
+            'email': 'john@example.com',
+            'total_miles': '18,000',
+            'transactions': 3,
+        },
+        {
+            'rank': 2,
+            'name': 'Jane Smith',
+            'email': 'jane@example.com',
+            'total_miles': '5,000',
+            'transactions': 1,
+        },
+        {
+            'rank': 3,
+            'name': 'Budi A. Santoso',
+            'email': 'budi@example.com',
+            'total_miles': '4,500',
+            'transactions': 2,
+        },
+    ]
+
+    context = {
+        'summary': summary,
+        'transactions': transactions,
+        'top_members': top_members,
+    }
+    return render(request, 'staff/report/staff_transaction_report.html', context)
+
+
 @login_required(login_url='auth_system:login')
 def member_transfer_list_view(request):
     member = _get_member(request.user)
