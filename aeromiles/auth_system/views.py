@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.db.models import F, Q
 from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
@@ -11,8 +11,11 @@ from .forms import (
     IdentityForm,
     LoginForm,
     MemberRegistrationForm,
+    MemberProfileSettingsForm,
     StaffClaimUpdateForm,
+    StaffProfileSettingsForm,
     StaffRegistrationForm,
+    StyledPasswordChangeForm,
     TransferMilesForm,
 )
 from .models import ClaimMissingMiles, Identity, Member, Staff, TransferMiles
@@ -98,6 +101,59 @@ def dashboard_view(request):
         context['staff'] = staff
     
     return render(request, 'auth_system/dashboard.html', context)
+
+
+@require_http_methods(["GET", "POST"])
+@login_required(login_url='auth_system:login')
+def profile_settings_view(request):
+    user = request.user
+    member = _get_member(user)
+    staff = _get_staff(user)
+
+    if member:
+        profile = member
+        user_type = 'member'
+        profile_form_class = MemberProfileSettingsForm
+    elif staff:
+        profile = staff
+        user_type = 'staff'
+        profile_form_class = StaffProfileSettingsForm
+    else:
+        messages.error(request, 'Profil pengguna tidak ditemukan.')
+        return redirect('auth_system:dashboard')
+
+    profile_form = profile_form_class(user=user, profile=profile)
+    password_form = StyledPasswordChangeForm(user=user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'save_profile':
+            profile_form = profile_form_class(request.POST, user=user, profile=profile)
+            if profile_form.is_valid():
+                profile_form.save()
+                messages.success(request, 'Profil berhasil diperbarui.')
+                return redirect('auth_system:profile_settings')
+            messages.error(request, 'Perubahan profil belum bisa disimpan. Periksa kembali input Anda.')
+
+        elif action == 'change_password':
+            password_form = StyledPasswordChangeForm(user=user, data=request.POST)
+            profile_form = profile_form_class(user=user, profile=profile)
+            if password_form.is_valid():
+                updated_user = password_form.save()
+                update_session_auth_hash(request, updated_user)
+                messages.success(request, 'Password berhasil diperbarui.')
+                return redirect('auth_system:profile_settings')
+            messages.error(request, 'Password belum bisa diperbarui. Periksa kembali input Anda.')
+
+    context = {
+        'user_type': user_type,
+        'member': member,
+        'staff': staff,
+        'profile_form': profile_form,
+        'password_form': password_form,
+    }
+    return render(request, 'auth_system/profile_settings.html', context)
 
 
 @require_http_methods(["GET", "POST"])

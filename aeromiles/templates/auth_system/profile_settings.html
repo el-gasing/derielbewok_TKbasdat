@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Pengaturan Profil - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-shell {
+        max-width: 980px;
+        margin: 0 auto;
+    }
+
+    .settings-header {
+        background: linear-gradient(135deg, #233247 0%, #3b6ea8 100%);
+        color: #fff;
+        border-radius: 18px;
+        padding: 24px 28px;
+        margin-bottom: 18px;
+        box-shadow: 0 16px 34px rgba(35, 50, 71, 0.16);
+    }
+
+    .settings-grid {
+        display: grid;
+        gap: 18px;
+    }
+
+    .panel-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+    }
+
+    .panel-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #233247;
+        margin-bottom: 4px;
+    }
+
+    .panel-subtitle {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 18px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .field-block {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .field-block.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .field-block label {
+        font-size: 14px;
+        font-weight: 700;
+        color: #24364c;
+    }
+
+    .field-block .form-control,
+    .field-block .form-select {
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        min-height: 44px;
+    }
+
+    .field-block .form-control[disabled],
+    .field-block .form-select[disabled] {
+        background: #f7f9fc;
+        color: #5b6b7f;
+    }
+
+    .field-block .form-control:focus,
+    .field-block .form-select:focus {
+        border-color: #8fb1df;
+        box-shadow: 0 0 0 0.2rem rgba(31, 90, 166, 0.12);
+    }
+
+    .field-error {
+        color: #b42318;
+        font-size: 12px;
+    }
+
+    .action-row {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+
+    .primary-button,
+    .secondary-button {
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-weight: 700;
+        border: 1px solid transparent;
+        text-decoration: none;
+    }
+
+    .primary-button {
+        background: var(--accent);
+        color: #fff;
+    }
+
+    .secondary-button {
+        background: #fff;
+        color: #233247;
+        border-color: var(--line);
+    }
+
+    .meta-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .meta-chip {
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .settings-header,
+        .panel-card {
+            padding: 18px;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .field-block.full-width {
+            grid-column: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-shell">
+    <section class="settings-header">
+        <div style="font-size: 12px; letter-spacing: .14em; text-transform: uppercase; opacity: .8; margin-bottom: 8px;">Akun</div>
+        <h1 style="font-size: 30px; font-weight: 800; margin-bottom: 6px;">Pengaturan Profil</h1>
+        <p style="margin: 0; color: rgba(255,255,255,.86);">Perbarui data profil dan kelola password akun Anda.</p>
+        <div class="meta-list">
+            {% if user_type == 'member' %}
+                <span class="meta-chip">Member {{ member.member_id }}</span>
+                <span class="meta-chip">Bergabung {{ member.created_at|date:"d M Y" }}</span>
+            {% else %}
+                <span class="meta-chip">Staff {{ staff.staff_id }}</span>
+                {% if staff.maskapai %}
+                    <span class="meta-chip">{{ staff.maskapai.code }} - {{ staff.maskapai.name }}</span>
+                {% endif %}
+            {% endif %}
+        </div>
+    </section>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="settings-grid">
+        <section class="panel-card">
+            <div class="panel-title">Data Profil</div>
+            <div class="panel-subtitle">
+                Email tidak dapat diubah.
+                {% if user_type == 'member' %}
+                    Nomor member dan tanggal bergabung hanya ditampilkan.
+                {% else %}
+                    ID staff hanya ditampilkan, sementara kode maskapai masih dapat diperbarui.
+                {% endif %}
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_profile">
+
+                {% if profile_form.non_field_errors %}
+                    <div class="alert alert-danger">{{ profile_form.non_field_errors.0 }}</div>
+                {% endif %}
+
+                <div class="form-grid">
+                    {% for field in profile_form %}
+                        <div class="field-block">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <div class="field-error">{{ field.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="action-row">
+                    <button type="submit" class="primary-button">Simpan Perubahan</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel-card">
+            <div class="panel-title">Ubah Password</div>
+            <div class="panel-subtitle">Masukkan password lama untuk menyimpan password baru.</div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="change_password">
+
+                {% if password_form.non_field_errors %}
+                    <div class="alert alert-danger">{{ password_form.non_field_errors.0 }}</div>
+                {% endif %}
+
+                <div class="form-grid">
+                    {% for field in password_form %}
+                        <div class="field-block full-width">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div style="font-size: 12px; color: var(--muted);">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                                <div class="field-error">{{ field.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="action-row">
+                    <button type="submit" class="primary-button">Ubah Password</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+{% endblock %}
