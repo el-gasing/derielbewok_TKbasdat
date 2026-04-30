@@ -12,14 +12,14 @@ class UserRole(models.Model):
         ('penyedia', 'Penyedia'),
         ('mitra', 'Mitra'),
     ]
-    
+
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, unique=True)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     def __str__(self):
         return self.get_role_display()
-    
+
     class Meta:
         verbose_name = 'User Role'
         verbose_name_plural = 'User Roles'
@@ -45,10 +45,10 @@ class Member(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.user.username} - {self.member_id}"
-    
+
     @staticmethod
     def generate_member_id():
         """Generate unique member ID dengan format AMS + 6 digit number"""
@@ -59,7 +59,7 @@ class Member(models.Model):
         else:
             new_num = 1
         return f"AMS{new_num:06d}"
-    
+
     class Meta:
         verbose_name = 'Member'
         verbose_name_plural = 'Members'
@@ -76,7 +76,7 @@ class Staff(models.Model):
         ('marketing', 'Marketing'),
         ('admin', 'Admin'),
     ]
-    
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='staff_profile')
     staff_id = models.CharField(max_length=50, unique=True)
     salutation = models.CharField(max_length=10, choices=SALUTATION_CHOICES, default='mr')
@@ -89,10 +89,10 @@ class Staff(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.user.username} - {self.staff_id}"
-    
+
     @staticmethod
     def generate_staff_id():
         """Generate unique staff ID dengan format STF + 6 digit number"""
@@ -103,7 +103,7 @@ class Staff(models.Model):
         else:
             new_num = 1
         return f"STF{new_num:06d}"
-    
+
     class Meta:
         verbose_name = 'Staff'
         verbose_name_plural = 'Staff Members'
@@ -119,10 +119,10 @@ class Maskapai(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return self.name
-    
+
     class Meta:
         verbose_name = 'Maskapai'
         verbose_name_plural = 'Maskapai'
@@ -138,10 +138,10 @@ class Penyedia(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return self.name
-    
+
     class Meta:
         verbose_name = 'Penyedia'
         verbose_name_plural = 'Penyedia'
@@ -157,10 +157,10 @@ class Mitra(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return self.name
-    
+
     class Meta:
         verbose_name = 'Mitra'
         verbose_name_plural = 'Mitra'
@@ -174,7 +174,7 @@ class ClaimMissingMiles(models.Model):
         ('rejected', 'Rejected'),
         ('processed', 'Processed'),
     ]
-    
+
     member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='missing_miles_claims')
     claim_id = models.CharField(max_length=50, unique=True)
     flight_number = models.CharField(max_length=20)
@@ -186,10 +186,10 @@ class ClaimMissingMiles(models.Model):
     approved_by = models.ForeignKey(Staff, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_claims')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.claim_id} - {self.member}"
-    
+
     class Meta:
         verbose_name = 'Claim Missing Miles'
         verbose_name_plural = 'Claim Missing Miles'
@@ -202,7 +202,7 @@ class TransferMiles(models.Model):
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
-    
+
     from_member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='transfer_from')
     to_member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='transfer_to')
     transfer_id = models.CharField(max_length=50, unique=True)
@@ -211,10 +211,10 @@ class TransferMiles(models.Model):
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.transfer_id}: {self.from_member} -> {self.to_member}"
-    
+
     class Meta:
         verbose_name = 'Transfer Miles'
         verbose_name_plural = 'Transfer Miles'
@@ -293,3 +293,64 @@ class Identity(models.Model):
         verbose_name = 'Identity'
         verbose_name_plural = 'Identities'
         unique_together = (('member', 'document_number'),)
+
+
+class Hadiah(models.Model):
+    """Model untuk Hadiah (Gift/Prize) dalam program AeroMiles"""
+    STATUS_CHOICES = [
+        ('active', 'Aktif'),
+        ('inactive', 'Tidak Aktif'),
+        ('discontinued', 'Dihentikan'),
+    ]
+
+    kode_hadiah = models.CharField(max_length=20, unique=True)
+    nama_hadiah = models.CharField(max_length=100)
+    deskripsi = models.TextField(blank=True, null=True)
+    penyedia = models.ForeignKey(Penyedia, on_delete=models.CASCADE, related_name='hadiah_list')
+    mitra = models.ForeignKey(Mitra, on_delete=models.SET_NULL, null=True, blank=True, related_name='hadiah_list')
+    miles_diperlukan = models.BigIntegerField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    tanggal_valid_mulai = models.DateField()
+    tanggal_valid_akhir = models.DateField()
+    jumlah_tersedia = models.IntegerField(default=0)
+    jumlah_terjual = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @staticmethod
+    def generate_kode_hadiah():
+        """Generate kode hadiah berurutan dengan format RWD-001."""
+        last_hadiah = Hadiah.objects.order_by('-id').first()
+        if last_hadiah and last_hadiah.kode_hadiah.startswith('RWD-'):
+            try:
+                last_number = int(last_hadiah.kode_hadiah.split('-')[-1])
+            except (TypeError, ValueError):
+                last_number = 0
+        else:
+            last_number = 0
+        return f"RWD-{last_number + 1:03d}"
+
+    def __str__(self):
+        return f"{self.kode_hadiah} - {self.nama_hadiah}"
+
+    @property
+    def sisa_hadiah(self):
+        """Menghitung sisa hadiah yang tersedia"""
+        return self.jumlah_tersedia - self.jumlah_terjual
+
+    @property
+    def is_periode_valid(self):
+        """Mengecek apakah periode hadiah masih berlaku"""
+        from datetime import date
+        today = date.today()
+        return self.tanggal_valid_mulai <= today <= self.tanggal_valid_akhir
+
+    @property
+    def sudah_kadaluarsa(self):
+        from datetime import date
+        return self.tanggal_valid_akhir < date.today()
+
+    class Meta:
+        verbose_name = 'Hadiah'
+        verbose_name_plural = 'Hadiah'
+        ordering = ['-created_at']
