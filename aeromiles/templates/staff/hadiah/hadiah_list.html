@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}Kelola Hadiah - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+  .reward-shell {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .reward-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+
+  .reward-header h1 {
+    margin: 0;
+    font-size: 34px;
+    font-weight: 800;
+    color: #142033;
+  }
+
+  .reward-subtitle {
+    margin-top: 8px;
+    color: #69788b;
+    font-size: 14px;
+  }
+
+  .reward-toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .reward-filter {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+
+  .reward-filter .field {
+    min-width: 200px;
+  }
+
+  .reward-filter label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #435267;
+  }
+
+  .reward-filter .form-select {
+    min-height: 42px;
+    border-radius: 12px;
+    border: 1px solid #dce4ef;
+  }
+
+  .reward-btn,
+  .reward-btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 12px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .reward-btn {
+    background: #0f4d97;
+    color: #fff;
+    border: 1px solid #0f4d97;
+  }
+
+  .reward-btn-outline {
+    background: #fff;
+    color: #233247;
+    border: 1px solid #dce4ef;
+  }
+
+  .reward-table-card {
+    background: #fff;
+    border: 1px solid #dce4ef;
+    border-radius: 18px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+
+  .reward-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .reward-table th,
+  .reward-table td {
+    padding: 18px 16px;
+    border-bottom: 1px solid #eef3f8;
+    vertical-align: middle;
+    font-size: 14px;
+  }
+
+  .reward-table th {
+    color: #69788b;
+    font-size: 12px;
+    font-weight: 800;
+    background: #fbfdff;
+  }
+
+  .reward-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .reward-code {
+    font-weight: 800;
+    color: #324b69;
+  }
+
+  .reward-name {
+    font-weight: 700;
+    color: #172435;
+  }
+
+  .reward-desc {
+    color: #6a7788;
+    max-width: 260px;
+  }
+
+  .provider-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .provider-chip {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #eef3f8;
+    color: #415066;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: lowercase;
+  }
+
+  .miles-cell {
+    font-weight: 800;
+    color: #1f3550;
+  }
+
+  .action-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .icon-action {
+    color: #26364d;
+    text-decoration: none;
+    font-size: 15px;
+  }
+
+  .icon-action.delete {
+    color: #c84d4d;
+  }
+
+  .icon-action.is-disabled {
+    opacity: 0.55;
+  }
+
+  .empty-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: #6b7888;
+  }
+
+  @media (max-width: 900px) {
+    .reward-header h1 {
+      font-size: 28px;
+    }
+
+    .reward-table-card {
+      overflow-x: auto;
+    }
+
+    .reward-table {
+      min-width: 840px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reward-shell">
+  <div class="reward-header">
+    <div>
+      <h1>Kelola Hadiah & Penyedia</h1>
+      <div class="reward-subtitle">
+        Staf dapat melihat katalog hadiah, memfilter berdasarkan penyedia atau status,
+        lalu menambah, mengubah, dan menghapus hadiah yang sudah kadaluarsa.
+      </div>
+    </div>
+    <a href="{% url 'auth_system:staff_hadiah_create' %}" class="reward-btn">
+      <i class="fas fa-plus"></i>
+      Tambah Hadiah
+    </a>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="get" class="reward-toolbar">
+    <div class="reward-filter">
+      <div class="field">
+        <label for="penyedia">Penyedia</label>
+        <select name="penyedia" id="penyedia" class="form-select">
+          <option value="">Semua penyedia</option>
+          {% for penyedia_id, penyedia_name in penyedia_list %}
+            <option value="{{ penyedia_id }}" {% if selected_penyedia|stringformat:"s" == penyedia_id|stringformat:"s" %}selected{% endif %}>
+              {{ penyedia_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="status">Status</label>
+        <select name="status" id="status" class="form-select">
+          <option value="">Semua status</option>
+          <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Aktif</option>
+          <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Tidak aktif</option>
+          <option value="discontinued" {% if selected_status == 'discontinued' %}selected{% endif %}>Dihentikan</option>
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="reward-btn-outline">
+      <i class="fas fa-filter"></i>
+      Terapkan Filter
+    </button>
+  </form>
+
+  <div class="reward-table-card">
+    {% if hadiah_list %}
+      <table class="reward-table">
+        <thead>
+          <tr>
+            <th>Kode</th>
+            <th>Nama</th>
+            <th>Deskripsi</th>
+            <th>Penyedia</th>
+            <th>Miles</th>
+            <th>Periode</th>
+            <th style="text-align: center;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for hadiah in hadiah_list %}
+            <tr>
+              <td class="reward-code">{{ hadiah.kode_hadiah }}</td>
+              <td class="reward-name">{{ hadiah.nama_hadiah }}</td>
+              <td class="reward-desc">{{ hadiah.deskripsi|default:"-"|truncatewords:6 }}</td>
+              <td>
+                <div class="provider-cell">
+                  <span>{{ hadiah.penyedia.name }}</span>
+                  <span class="provider-chip">penyedia</span>
+                  {% if hadiah.mitra %}
+                    <span class="provider-chip">mitra</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="miles-cell">{{ hadiah.miles_diperlukan|floatformat:0 }}</td>
+              <td>{{ hadiah.tanggal_valid_mulai|date:"Y-m-d" }} — {{ hadiah.tanggal_valid_akhir|date:"Y-m-d" }}</td>
+              <td>
+                <div class="action-cell">
+                  <a href="{% url 'auth_system:staff_hadiah_update' hadiah.id %}" class="icon-action" title="Edit hadiah">
+                    <i class="fas fa-pen"></i>
+                  </a>
+                  <a
+                    href="{% url 'auth_system:staff_hadiah_delete' hadiah.id %}"
+                    class="icon-action delete {% if not hadiah.sudah_kadaluarsa %}is-disabled{% endif %}"
+                    title="{% if hadiah.sudah_kadaluarsa %}Hapus hadiah{% else %}Hanya hadiah yang sudah berakhir yang bisa dihapus{% endif %}"
+                  >
+                    <i class="fas fa-trash-alt"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">
+        Belum ada hadiah yang cocok dengan filter saat ini.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

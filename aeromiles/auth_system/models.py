@@ -293,3 +293,64 @@ class Identity(models.Model):
         verbose_name = 'Identity'
         verbose_name_plural = 'Identities'
         unique_together = (('member', 'document_number'),)
+
+
+class Hadiah(models.Model):
+    """Model untuk Hadiah (Gift/Prize) dalam program AeroMiles"""
+    STATUS_CHOICES = [
+        ('active', 'Aktif'),
+        ('inactive', 'Tidak Aktif'),
+        ('discontinued', 'Dihentikan'),
+    ]
+    
+    kode_hadiah = models.CharField(max_length=20, unique=True)
+    nama_hadiah = models.CharField(max_length=100)
+    deskripsi = models.TextField(blank=True, null=True)
+    penyedia = models.ForeignKey(Penyedia, on_delete=models.CASCADE, related_name='hadiah_list')
+    mitra = models.ForeignKey(Mitra, on_delete=models.SET_NULL, null=True, blank=True, related_name='hadiah_list')
+    miles_diperlukan = models.BigIntegerField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    tanggal_valid_mulai = models.DateField()
+    tanggal_valid_akhir = models.DateField()
+    jumlah_tersedia = models.IntegerField(default=0)
+    jumlah_terjual = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @staticmethod
+    def generate_kode_hadiah():
+        """Generate kode hadiah berurutan dengan format RWD-001."""
+        last_hadiah = Hadiah.objects.order_by('-id').first()
+        if last_hadiah and last_hadiah.kode_hadiah.startswith('RWD-'):
+            try:
+                last_number = int(last_hadiah.kode_hadiah.split('-')[-1])
+            except (TypeError, ValueError):
+                last_number = 0
+        else:
+            last_number = 0
+        return f"RWD-{last_number + 1:03d}"
+
+    def __str__(self):
+        return f"{self.kode_hadiah} - {self.nama_hadiah}"
+    
+    @property
+    def sisa_hadiah(self):
+        """Menghitung sisa hadiah yang tersedia"""
+        return self.jumlah_tersedia - self.jumlah_terjual
+    
+    @property
+    def is_periode_valid(self):
+        """Mengecek apakah periode hadiah masih berlaku"""
+        from datetime import date
+        today = date.today()
+        return self.tanggal_valid_mulai <= today <= self.tanggal_valid_akhir
+
+    @property
+    def sudah_kadaluarsa(self):
+        from datetime import date
+        return self.tanggal_valid_akhir < date.today()
+    
+    class Meta:
+        verbose_name = 'Hadiah'
+        verbose_name_plural = 'Hadiah'
+        ordering = ['-created_at']

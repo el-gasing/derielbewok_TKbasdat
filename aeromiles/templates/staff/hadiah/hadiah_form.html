@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+  .reward-form-page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 16px 0;
+  }
+
+  .reward-form-card {
+    background: #fff;
+    border: 1px solid #dde5ef;
+    border-radius: 18px;
+    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+  }
+
+  .reward-form-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px 10px;
+  }
+
+  .reward-form-head h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 800;
+    color: #182536;
+  }
+
+  .reward-close {
+    color: #708096;
+    text-decoration: none;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .reward-form-body {
+    padding: 0 22px 22px;
+  }
+
+  .reward-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .reward-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .reward-field.full {
+    grid-column: 1 / -1;
+  }
+
+  .reward-field label {
+    font-size: 13px;
+    font-weight: 800;
+    color: #26384f;
+  }
+
+  .reward-field .form-control,
+  .reward-field .form-select {
+    min-height: 44px;
+    border: 1px solid #d9e2ec;
+    border-radius: 11px;
+    background: #fff;
+    font-size: 14px;
+  }
+
+  .reward-field textarea.form-control {
+    min-height: 110px;
+    resize: vertical;
+  }
+
+  .reward-field .form-control:focus,
+  .reward-field .form-select:focus {
+    border-color: #8db2df;
+    box-shadow: 0 0 0 0.18rem rgba(15, 77, 151, 0.12);
+  }
+
+  .field-hint {
+    font-size: 12px;
+    color: #6d7b8b;
+  }
+
+  .field-error {
+    color: #b42318;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .reward-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .reward-btn,
+  .reward-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 96px;
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    border: 1px solid transparent;
+  }
+
+  .reward-btn {
+    background: #0f4d97;
+    border-color: #0f4d97;
+    color: #fff;
+  }
+
+  .reward-btn-secondary {
+    background: #fff;
+    border-color: #d9e2ec;
+    color: #24364c;
+  }
+
+  @media (max-width: 768px) {
+    .reward-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .reward-form-actions {
+      justify-content: stretch;
+    }
+
+    .reward-btn,
+    .reward-btn-secondary {
+      flex: 1;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reward-form-page">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="reward-form-card">
+    <div class="reward-form-head">
+      <h1>{% if hadiah %}Edit Hadiah{% else %}Tambah Hadiah Baru{% endif %}</h1>
+      <a href="{% url 'auth_system:staff_hadiah_list' %}" class="reward-close" aria-label="Tutup">
+        <i class="fas fa-times"></i>
+      </a>
+    </div>
+
+    <div class="reward-form-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+              <div>{{ error }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="reward-grid">
+          {% if hadiah %}
+            <div class="reward-field">
+              <label for="{{ form.kode_hadiah.id_for_label }}">Kode Hadiah</label>
+              {{ form.kode_hadiah }}
+              {% if form.kode_hadiah.errors %}
+                <div class="field-error">{{ form.kode_hadiah.errors.0 }}</div>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          <div class="reward-field {% if not hadiah %}full{% endif %}">
+            <label for="{{ form.nama_hadiah.id_for_label }}">Nama Hadiah</label>
+            {{ form.nama_hadiah }}
+            {% if form.nama_hadiah.errors %}
+              <div class="field-error">{{ form.nama_hadiah.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="reward-field">
+            <label for="{{ form.penyedia.id_for_label }}">Penyedia</label>
+            {{ form.penyedia }}
+            <div class="field-hint">Pilih penyedia hadiah yang tersedia di sistem.</div>
+            {% if form.penyedia.errors %}
+              <div class="field-error">{{ form.penyedia.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="reward-field">
+            <label for="{{ form.miles_diperlukan.id_for_label }}">Miles Dibutuhkan</label>
+            {{ form.miles_diperlukan }}
+            {% if form.miles_diperlukan.errors %}
+              <div class="field-error">{{ form.miles_diperlukan.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="reward-field full">
+            <label for="{{ form.deskripsi.id_for_label }}">Deskripsi</label>
+            {{ form.deskripsi }}
+            {% if form.deskripsi.errors %}
+              <div class="field-error">{{ form.deskripsi.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="reward-field">
+            <label for="{{ form.tanggal_valid_mulai.id_for_label }}">Valid Start</label>
+            {{ form.tanggal_valid_mulai }}
+            {% if form.tanggal_valid_mulai.errors %}
+              <div class="field-error">{{ form.tanggal_valid_mulai.errors.0 }}</div>
+            {% endif %}
+          </div>
+
+          <div class="reward-field">
+            <label for="{{ form.tanggal_valid_akhir.id_for_label }}">Program End</label>
+            {{ form.tanggal_valid_akhir }}
+            {% if form.tanggal_valid_akhir.errors %}
+              <div class="field-error">{{ form.tanggal_valid_akhir.errors.0 }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="reward-form-actions">
+          <a href="{% url 'auth_system:staff_hadiah_list' %}" class="reward-btn-secondary">Batal</a>
+          <button type="submit" class="reward-btn">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

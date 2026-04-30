@@ -460,6 +460,7 @@
                                 <div class="form-group field-full">
                                     <label for="id_maskapai" class="form-label">Kode Maskapai <span class="text-danger">*</span></label>
                                     {{ form.maskapai }}
+                                    <div class="text-muted" style="margin-top: 6px; font-size: 12px;">Pilih dari daftar kode dan nama maskapai yang tersedia.</div>
                                     {% if form.maskapai.errors %}
                                         <div class="error-message">{{ form.maskapai.errors.0 }}</div>
                                     {% endif %}

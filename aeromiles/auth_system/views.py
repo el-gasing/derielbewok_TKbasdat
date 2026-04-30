@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import F, Q
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -15,10 +16,15 @@ from .forms import (
     StaffClaimUpdateForm,
     StaffProfileSettingsForm,
     StaffRegistrationForm,
+    StaffManageMemberCreateForm,
+    StaffManageMemberUpdateForm,
     StyledPasswordChangeForm,
     TransferMilesForm,
+    HadiahForm,
+    _ensure_default_penyedia,
+    _ensure_default_mitra,
 )
-from .models import ClaimMissingMiles, Identity, Member, Staff, TransferMiles
+from .models import ClaimMissingMiles, Identity, Member, Staff, TransferMiles, Hadiah, Penyedia
 
 
 def _get_member(user):
@@ -51,6 +57,93 @@ def _next_transfer_id():
         return 'TRF000001'
     last_num = int(last_transfer.transfer_id.replace('TRF', ''))
     return f'TRF{last_num + 1:06d}'
+
+
+@login_required(login_url='auth_system:login')
+def manage_members_list_view(request):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staf.')
+        return redirect('auth_system:dashboard')
+
+    search_query = request.GET.get('search', '').strip()
+    members_qs = Member.objects.select_related('user').order_by('-created_at')
+    if search_query:
+        members_qs = members_qs.filter(
+            Q(member_id__icontains=search_query)
+            | Q(user__first_name__icontains=search_query)
+            | Q(user__last_name__icontains=search_query)
+            | Q(user__email__icontains=search_query)
+        )
+
+    paginator = Paginator(members_qs, 10)
+    members = paginator.get_page(request.GET.get('page'))
+    return render(
+        request,
+        'staff/manage_member/manage_members.html',
+        {'members': members, 'search_query': search_query, 'staff': staff},
+    )
+
+
+@require_http_methods(["GET", "POST"])
+@login_required(login_url='auth_system:login')
+def add_member_view(request):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staf.')
+        return redirect('auth_system:dashboard')
+
+    if request.method == 'POST':
+        form = StaffManageMemberCreateForm(request.POST)
+        if form.is_valid():
+            _, member = form.save()
+            messages.success(request, f'Member {member.member_id} berhasil ditambahkan.')
+            return redirect('auth_system:manage_members_list')
+    else:
+        form = StaffManageMemberCreateForm()
+
+    return render(request, 'staff/manage_member/add_member.html', {'form': form, 'staff': staff})
+
+
+@require_http_methods(["GET", "POST"])
+@login_required(login_url='auth_system:login')
+def edit_member_view(request, member_id):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staf.')
+        return redirect('auth_system:dashboard')
+
+    member = get_object_or_404(Member.objects.select_related('user'), member_id=member_id)
+    if request.method == 'POST':
+        form = StaffManageMemberUpdateForm(request.POST, member=member)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Data member {member.member_id} berhasil diperbarui.')
+            return redirect('auth_system:manage_members_list')
+    else:
+        form = StaffManageMemberUpdateForm(member=member)
+
+    return render(
+        request,
+        'staff/manage_member/edit_member.html',
+        {'form': form, 'member': member, 'staff': staff},
+    )
+
+
+@require_http_methods(["POST"])
+@login_required(login_url='auth_system:login')
+def delete_member_view(request, member_id):
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staf.')
+        return redirect('auth_system:dashboard')
+
+    member = get_object_or_404(Member.objects.select_related('user'), member_id=member_id)
+    user = member.user
+    deleted_member_id = member.member_id
+    user.delete()
+    messages.success(request, f'Member {deleted_member_id} berhasil dihapus.')
+    return redirect('auth_system:manage_members_list')
 
 
 @require_http_methods(["GET", "POST"])
@@ -747,17 +840,144 @@ def delete_member_identity_view(request, identity_id):
     messages.success(request, 'Identitas berhasil dihapus.')
     return redirect('auth_system:member_identities_list')
 
-def _get_member(user):
-    """Mengembalikan profil member atau None."""
-    try:
-        return Member.objects.get(user=user)
-    except Member.DoesNotExist:
-        return None
+
+# ===================== VIEWS UNTUK MANAJEMEN HADIAH (STAFF) =====================
+
+@login_required(login_url='auth_system:login')
+def staff_hadiah_list_view(request):
+    """View untuk melihat daftar hadiah (staff)"""
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staf.')
+        return redirect('auth_system:dashboard')
+
+    _ensure_default_penyedia()
+    _ensure_default_mitra()
+    
+    # Filter berdasarkan parameter query
+    hadiah_list = Hadiah.objects.select_related('penyedia', 'mitra').all().order_by('-created_at')
+    
+    # Filter berdasarkan penyedia
+    penyedia_id = request.GET.get('penyedia', '')
+    if penyedia_id:
+        hadiah_list = hadiah_list.filter(penyedia_id=penyedia_id)
+    
+    # Filter berdasarkan status keaktifan
+    status = request.GET.get('status', '')
+    if status:
+        hadiah_list = hadiah_list.filter(status=status)
+    
+    # Get semua penyedia aktif untuk dropdown filter
+    penyedia_list = Penyedia.objects.filter(is_active=True).values_list('id', 'name').order_by('name')
+    
+    context = {
+        'hadiah_list': hadiah_list,
+        'penyedia_list': penyedia_list,
+        'selected_penyedia': penyedia_id,
+        'selected_status': status,
+        'staff': staff,
+    }
+    return render(request, 'staff/hadiah/hadiah_list.html', context)
 
 
-def _get_staff(user):
-    """Mengembalikan profil staff atau None."""
-    try:
-        return Staff.objects.get(user=user)
-    except Staff.DoesNotExist:
-        return None
+@require_http_methods(["GET", "POST"])
+@login_required(login_url='auth_system:login')
+def staff_hadiah_create_view(request):
+    """View untuk membuat hadiah baru (staff)"""
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staf.')
+        return redirect('auth_system:dashboard')
+
+    _ensure_default_penyedia()
+    _ensure_default_mitra()
+    
+    if request.method == 'POST':
+        form = HadiahForm(request.POST)
+        if form.is_valid():
+            hadiah = form.save()
+            messages.success(request, f'Hadiah "{hadiah.nama_hadiah}" berhasil ditambahkan.')
+            return redirect('auth_system:staff_hadiah_list')
+    else:
+        form = HadiahForm()
+    
+    context = {
+        'form': form,
+        'staff': staff,
+        'title': 'Tambah Hadiah Baru',
+    }
+    return render(request, 'staff/hadiah/hadiah_form.html', context)
+
+
+@login_required(login_url='auth_system:login')
+def staff_hadiah_detail_view(request, hadiah_id):
+    """View untuk melihat detail hadiah (staff)"""
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staf.')
+        return redirect('auth_system:dashboard')
+    
+    hadiah = get_object_or_404(Hadiah.objects.select_related('penyedia', 'mitra'), id=hadiah_id)
+    
+    context = {
+        'hadiah': hadiah,
+        'staff': staff,
+    }
+    return render(request, 'staff/hadiah/hadiah_detail.html', context)
+
+
+@require_http_methods(["GET", "POST"])
+@login_required(login_url='auth_system:login')
+def staff_hadiah_update_view(request, hadiah_id):
+    """View untuk mengedit hadiah (staff)"""
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staf.')
+        return redirect('auth_system:dashboard')
+    
+    hadiah = get_object_or_404(Hadiah.objects.select_related('penyedia', 'mitra'), id=hadiah_id)
+    
+    if request.method == 'POST':
+        form = HadiahForm(request.POST, instance=hadiah)
+        if form.is_valid():
+            updated_hadiah = form.save()
+            messages.success(request, f'Hadiah "{updated_hadiah.nama_hadiah}" berhasil diperbarui.')
+            return redirect('auth_system:staff_hadiah_detail', hadiah_id=hadiah.id)
+    else:
+        form = HadiahForm(instance=hadiah)
+    
+    context = {
+        'form': form,
+        'hadiah': hadiah,
+        'staff': staff,
+        'title': 'Edit Hadiah',
+    }
+    return render(request, 'staff/hadiah/hadiah_form.html', context)
+
+
+@require_http_methods(["GET", "POST"])
+@login_required(login_url='auth_system:login')
+def staff_hadiah_delete_view(request, hadiah_id):
+    """View untuk menghapus hadiah (staff)"""
+    staff = _get_staff(request.user)
+    if not staff:
+        messages.error(request, 'Halaman ini hanya untuk staf.')
+        return redirect('auth_system:dashboard')
+    
+    hadiah = get_object_or_404(Hadiah.objects.select_related('penyedia', 'mitra'), id=hadiah_id)
+    nama_hadiah = hadiah.nama_hadiah
+
+    if not hadiah.sudah_kadaluarsa:
+        messages.error(request, 'Hadiah hanya dapat dihapus jika periode validitasnya sudah selesai.')
+        return redirect('auth_system:staff_hadiah_detail', hadiah_id=hadiah.id)
+
+    if request.method == 'POST':
+        hadiah.delete()
+        messages.success(request, f'Hadiah "{nama_hadiah}" berhasil dihapus.')
+        return redirect('auth_system:staff_hadiah_list')
+    
+    context = {
+        'hadiah': hadiah,
+        'staff': staff,
+    }
+    return render(request, 'staff/hadiah/hadiah_confirm_delete.html', context)

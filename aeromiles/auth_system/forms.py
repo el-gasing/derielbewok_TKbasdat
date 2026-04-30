@@ -4,8 +4,9 @@ from datetime import date
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
+from django.db.models import Q
 from django.utils.html import strip_tags
-from .models import ClaimMissingMiles, Identity, Maskapai, Member, Staff
+from .models import ClaimMissingMiles, Identity, Maskapai, Member, Staff, Hadiah, Penyedia, Mitra
 
 
 def _sanitize_text(value, max_length=None):
@@ -89,6 +90,25 @@ NATIONALITY_CHOICES = [
     ('Yemen', 'Yemen'),
 ]
 
+DEFAULT_MASKAPAI = [
+    {'code': 'GA', 'name': 'Garuda Indonesia'},
+    {'code': 'QG', 'name': 'Citilink'},
+    {'code': 'QZ', 'name': 'AirAsia Indonesia'},
+    {'code': 'JT', 'name': 'Lion Air'},
+    {'code': 'ID', 'name': 'Batik Air'},
+]
+
+DEFAULT_PENYEDIA = [
+    {'code': 'GAR', 'name': 'Garuda Indonesia'},
+    {'code': 'TRV', 'name': 'Traveloka Partner'},
+    {'code': 'PLZ', 'name': 'Plaza Premium'},
+]
+
+DEFAULT_MITRA = [
+    {'code': 'TRV', 'name': 'Traveloka Partner'},
+    {'code': 'PLZ', 'name': 'Plaza Premium'},
+]
+
 
 def _build_unique_username(email):
     base = (email or '').split('@')[0]
@@ -102,6 +122,52 @@ def _build_unique_username(email):
         suffix += 1
 
     return username
+
+
+def _ensure_default_maskapai():
+    """Pastikan dropdown maskapai punya opsi dasar saat database masih kosong."""
+    if Maskapai.objects.exists():
+        return
+
+    for item in DEFAULT_MASKAPAI:
+        Maskapai.objects.get_or_create(
+            code=item['code'],
+            defaults={
+                'name': item['name'],
+                'email': f"{item['code'].lower()}@aeromiles.local",
+                'is_active': True,
+            },
+        )
+
+
+def _ensure_default_penyedia():
+    if Penyedia.objects.exists():
+        return
+
+    for item in DEFAULT_PENYEDIA:
+        Penyedia.objects.get_or_create(
+            code=item['code'],
+            defaults={
+                'name': item['name'],
+                'email': f"{item['code'].lower()}@aeromiles.local",
+                'is_active': True,
+            },
+        )
+
+
+def _ensure_default_mitra():
+    if Mitra.objects.exists():
+        return
+
+    for item in DEFAULT_MITRA:
+        Mitra.objects.get_or_create(
+            code=item['code'],
+            defaults={
+                'name': item['name'],
+                'email': f"{item['code'].lower()}@aeromiles.local",
+                'is_active': True,
+            },
+        )
 
 
 class LoginForm(AuthenticationForm):
@@ -297,6 +363,7 @@ class StaffRegistrationForm(UserCreationForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        _ensure_default_maskapai()
         self.fields['password1'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Password'})
         self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Konfirmasi Password'})
         self.fields['maskapai'].queryset = Maskapai.objects.filter(is_active=True).order_by('name')
@@ -486,8 +553,12 @@ class StaffProfileSettingsForm(BaseProfileSettingsForm):
 
     def __init__(self, *args, user, profile, **kwargs):
         super().__init__(*args, user=user, profile=profile, **kwargs)
+        _ensure_default_maskapai()
         self.fields['staff_id'].initial = profile.staff_id
-        self.fields['maskapai'].queryset = Maskapai.objects.filter(is_active=True).order_by('name')
+        maskapai_filter = Q(is_active=True)
+        if profile.maskapai_id:
+            maskapai_filter |= Q(pk=profile.maskapai_id)
+        self.fields['maskapai'].queryset = Maskapai.objects.filter(maskapai_filter).order_by('name')
         self.fields['maskapai'].label_from_instance = lambda obj: f"{obj.code} - {obj.name}"
         self.fields['maskapai'].initial = profile.maskapai
         self.order_fields([
@@ -610,6 +681,134 @@ class TransferMilesForm(forms.Form):
     def clean_description(self):
         return _sanitize_text(self.cleaned_data.get('description'), max_length=500)
 
+
+class StaffManageMemberCreateForm(forms.Form):
+    first_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nama depan'})
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nama belakang'})
+    )
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'})
+    )
+    username = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username'})
+    )
+    password1 = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Password'})
+    )
+    password2 = forms.CharField(
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Konfirmasi password'})
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor HP'})
+    )
+
+    def clean_first_name(self):
+        return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
+
+    def clean_last_name(self):
+        return _sanitize_text(self.cleaned_data.get('last_name'), max_length=50)
+
+    def clean_username(self):
+        username = _sanitize_text(self.cleaned_data.get('username'), max_length=150)
+        if User.objects.filter(username=username).exists():
+            raise forms.ValidationError('Username sudah digunakan.')
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('Email sudah digunakan.')
+        return email
+
+    def clean_phone_number(self):
+        return _sanitize_phone(self.cleaned_data.get('phone_number'))
+
+    def clean(self):
+        cleaned = super().clean()
+        password1 = cleaned.get('password1')
+        password2 = cleaned.get('password2')
+        if password1 and password2 and password1 != password2:
+            self.add_error('password2', 'Konfirmasi password tidak cocok.')
+        return cleaned
+
+    def save(self):
+        user = User.objects.create_user(
+            username=self.cleaned_data['username'],
+            email=self.cleaned_data['email'],
+            password=self.cleaned_data['password1'],
+            first_name=self.cleaned_data['first_name'],
+            last_name=self.cleaned_data['last_name'],
+        )
+        member = Member.objects.create(
+            user=user,
+            member_id=Member.generate_member_id(),
+            phone_number=self.cleaned_data['phone_number'],
+        )
+        return user, member
+
+
+class StaffManageMemberUpdateForm(forms.Form):
+    first_name = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nama depan'})
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nama belakang'})
+    )
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'})
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor HP'})
+    )
+
+    def __init__(self, *args, member, **kwargs):
+        self.member = member
+        super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            self.fields['first_name'].initial = member.user.first_name
+            self.fields['last_name'].initial = member.user.last_name
+            self.fields['email'].initial = member.user.email
+            self.fields['phone_number'].initial = member.phone_number
+
+    def clean_first_name(self):
+        return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
+
+    def clean_last_name(self):
+        return _sanitize_text(self.cleaned_data.get('last_name'), max_length=50)
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        duplicate = User.objects.filter(email__iexact=email).exclude(pk=self.member.user_id).exists()
+        if duplicate:
+            raise forms.ValidationError('Email sudah digunakan.')
+        return email
+
+    def clean_phone_number(self):
+        return _sanitize_phone(self.cleaned_data.get('phone_number'))
+
+    def save(self):
+        self.member.user.first_name = self.cleaned_data['first_name']
+        self.member.user.last_name = self.cleaned_data['last_name']
+        self.member.user.email = self.cleaned_data['email']
+        self.member.user.save(update_fields=['first_name', 'last_name', 'email'])
+        self.member.phone_number = self.cleaned_data['phone_number']
+        self.member.save(update_fields=['phone_number', 'updated_at'])
+        return self.member
+
     def clean(self):
         cleaned_data = super().clean()
         miles_amount = cleaned_data.get('miles_amount')
@@ -640,3 +839,114 @@ class IdentityForm(forms.ModelForm):
         if issue_date and expiry_date and expiry_date <= issue_date:
             self.add_error('expiry_date', 'Tanggal habis harus lebih besar dari tanggal terbit.')
         return cleaned
+
+
+class HadiahForm(forms.ModelForm):
+    """Form untuk membuat/mengedit Hadiah"""
+    
+    class Meta:
+        model = Hadiah
+        fields = (
+            'kode_hadiah',
+            'nama_hadiah',
+            'penyedia',
+            'miles_diperlukan',
+            'deskripsi',
+            'tanggal_valid_mulai',
+            'tanggal_valid_akhir',
+        )
+        widgets = {
+            'kode_hadiah': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Kode hadiah akan digenerate otomatis',
+                'maxlength': '20'
+            }),
+            'nama_hadiah': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Nama Hadiah',
+                'maxlength': '100'
+            }),
+            'deskripsi': forms.Textarea(attrs={
+                'class': 'form-control',
+                'placeholder': 'Deskripsi hadiah',
+                'rows': 3
+            }),
+            'penyedia': forms.Select(attrs={'class': 'form-select'}),
+            'miles_diperlukan': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Miles dibutuhkan',
+                'min': '1'
+            }),
+            'tanggal_valid_mulai': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'tanggal_valid_akhir': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _ensure_default_penyedia()
+        _ensure_default_mitra()
+
+        penyedia_filter = Q(is_active=True)
+        if self.instance and self.instance.pk:
+            if self.instance.penyedia_id:
+                penyedia_filter |= Q(pk=self.instance.penyedia_id)
+
+        self.fields['penyedia'].queryset = Penyedia.objects.filter(penyedia_filter).order_by('name')
+        self.fields['penyedia'].empty_label = 'Pilih penyedia'
+        self.fields['penyedia'].label_from_instance = lambda obj: obj.name
+
+        if self.instance and self.instance.pk:
+            self.fields['kode_hadiah'].disabled = True
+            self.fields['kode_hadiah'].help_text = 'Kode hadiah tidak dapat diubah.'
+        else:
+            self.fields['kode_hadiah'].required = False
+            self.fields['kode_hadiah'].initial = Hadiah.generate_kode_hadiah()
+            self.fields['kode_hadiah'].widget.attrs['readonly'] = True
+
+    def clean_kode_hadiah(self):
+        if self.instance and self.instance.pk:
+            return self.instance.kode_hadiah
+
+        kode = _sanitize_text(self.cleaned_data.get('kode_hadiah'), max_length=20).upper()
+        return kode or Hadiah.generate_kode_hadiah()
+    
+    def clean_nama_hadiah(self):
+        return _sanitize_text(self.cleaned_data.get('nama_hadiah'), max_length=100)
+
+    def clean_deskripsi(self):
+        return _sanitize_text(self.cleaned_data.get('deskripsi'), max_length=500)
+
+    def clean_miles_diperlukan(self):
+        miles = self.cleaned_data.get('miles_diperlukan')
+        if miles is not None and miles <= 0:
+            raise forms.ValidationError('Miles dibutuhkan harus lebih dari 0.')
+        return miles
+    
+    def clean(self):
+        cleaned = super().clean()
+        tanggal_mulai = cleaned.get('tanggal_valid_mulai')
+        tanggal_akhir = cleaned.get('tanggal_valid_akhir')
+
+        if tanggal_mulai and tanggal_akhir and tanggal_akhir < tanggal_mulai:
+            self.add_error('tanggal_valid_akhir', 'Tanggal akhir harus lebih besar atau sama dengan tanggal mulai.')
+
+        if not self.instance.pk and tanggal_mulai and tanggal_mulai < date.today():
+            self.add_error('tanggal_valid_mulai', 'Tanggal mulai tidak boleh di masa lalu.')
+
+        return cleaned
+
+    def save(self, commit=True):
+        hadiah = super().save(commit=False)
+        if not hadiah.status:
+            hadiah.status = 'active'
+        if not hadiah.jumlah_tersedia:
+            hadiah.jumlah_tersedia = 1
+        if commit:
+            hadiah.save()
+        return hadiah

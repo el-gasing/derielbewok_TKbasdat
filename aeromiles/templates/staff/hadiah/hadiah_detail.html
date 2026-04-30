@@ -1,0 +1,233 @@
+{% extends "base.html" %} {% load static %} {% block title %}Detail Hadiah -
+AeroMiles{% endblock %} {% block content %}
+<div class="container py-4">
+  <!-- Header Section -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h1 class="h3 mb-0"><i class="fas fa-gift me-2"></i>Detail Hadiah</h1>
+      <p class="text-muted small mt-1">Informasi lengkap hadiah</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <a
+        href="{% url 'auth_system:staff_hadiah_update' hadiah.id %}"
+        class="btn btn-warning btn-sm"
+      >
+        <i class="fas fa-edit me-2"></i>Edit
+      </a>
+      <a
+        href="{% url 'auth_system:staff_hadiah_list' %}"
+        class="btn btn-outline-secondary btn-sm"
+      >
+        <i class="fas fa-arrow-left me-2"></i>Kembali
+      </a>
+    </div>
+  </div>
+
+  <!-- Alert Messages -->
+  {% if messages %} {% for message in messages %}
+  <div
+    class="alert alert-{{ message.tags }} alert-dismissible fade show"
+    role="alert"
+  >
+    {{ message }}
+    <button
+      type="button"
+      class="btn-close"
+      data-bs-dismiss="alert"
+      aria-label="Close"
+    ></button>
+  </div>
+  {% endfor %} {% endif %}
+
+  <!-- Detail Card -->
+  <div class="row">
+    <!-- Main Information -->
+    <div class="col-lg-8 mb-4">
+      <div class="card">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Informasi Hadiah</h5>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Kode Hadiah</label>
+              <p class="h6 mb-0">
+                <span class="badge bg-info">{{ hadiah.kode_hadiah }}</span>
+              </p>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Status</label>
+              <p class="mb-0">
+                {% if hadiah.status == 'active' %}
+                <span class="badge bg-success">Aktif</span>
+                {% elif hadiah.status == 'inactive' %}
+                <span class="badge bg-secondary">Tidak Aktif</span>
+                {% else %}
+                <span class="badge bg-danger">Dihentikan</span>
+                {% endif %}
+              </p>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-12">
+              <label class="form-label text-muted small">Nama Hadiah</label>
+              <p class="h6 mb-0">{{ hadiah.nama_hadiah }}</p>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-12">
+              <label class="form-label text-muted small">Deskripsi</label>
+              <p class="mb-0">{{ hadiah.deskripsi|linebreaks }}</p>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Penyedia</label>
+              <p class="mb-0">
+                <strong>{{ hadiah.penyedia.name }}</strong>
+                <br />
+                <small class="text-muted">{{ hadiah.penyedia.code }}</small>
+              </p>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Mitra</label>
+              <p class="mb-0">
+                {% if hadiah.mitra %}
+                <strong>{{ hadiah.mitra.name }}</strong>
+                <br />
+                <small class="text-muted">{{ hadiah.mitra.code }}</small>
+                {% else %}
+                <span class="text-muted">-</span>
+                {% endif %}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Side Information -->
+    <div class="col-lg-4 mb-4">
+      <!-- Miles & Availability -->
+      <div class="card mb-3">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">Miles & Ketersediaan</h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label text-muted small">Miles Diperlukan</label>
+            <p class="h5 mb-0">
+              <span class="badge bg-warning text-dark">
+                {{ hadiah.miles_diperlukan|floatformat:0 }} Miles
+              </span>
+            </p>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small">Jumlah Tersedia</label>
+            <p class="mb-0">
+              <strong>{{ hadiah.jumlah_tersedia }}</strong> unit
+            </p>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small">Jumlah Terjual</label>
+            <p class="mb-0">
+              <strong>{{ hadiah.jumlah_terjual }}</strong> unit
+            </p>
+          </div>
+          <div class="mb-0">
+            <label class="form-label text-muted small">Sisa Hadiah</label>
+            <p class="h6 mb-0">
+              {% if hadiah.sisa_hadiah > 0 %}
+              <span class="badge bg-success"
+                >{{ hadiah.sisa_hadiah }} unit</span
+              >
+              {% else %}
+              <span class="badge bg-danger">Habis</span>
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Periode Validitas -->
+      <div class="card mb-3">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">Periode Validitas</h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label text-muted small">Tanggal Mulai</label>
+            <p class="mb-0">
+              <strong>{{ hadiah.tanggal_valid_mulai|date:"d M Y" }}</strong>
+            </p>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small">Tanggal Akhir</label>
+            <p class="mb-0">
+              <strong>{{ hadiah.tanggal_valid_akhir|date:"d M Y" }}</strong>
+            </p>
+          </div>
+          <div class="mb-0">
+            <label class="form-label text-muted small">Status Periode</label>
+            <p class="mb-0">
+              {% if hadiah.is_periode_valid %}
+              <span class="badge bg-success">Berlaku</span>
+              {% else %}
+              <span class="badge bg-danger">Kadaluarsa</span>
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact Information -->
+      <div class="card">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">Informasi Penyedia</h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label text-muted small">Email</label>
+            <p class="mb-0">
+              <a href="mailto:{{ hadiah.penyedia.email }}"
+                >{{ hadiah.penyedia.email }}</a
+              >
+            </p>
+          </div>
+          <div class="mb-0">
+            <label class="form-label text-muted small">Telepon</label>
+            <p class="mb-0">
+              {% if hadiah.penyedia.phone_number %}
+              <a href="tel:{{ hadiah.penyedia.phone_number }}"
+                >{{ hadiah.penyedia.phone_number }}</a
+              >
+              {% else %}
+              <span class="text-muted">-</span>
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timestamps -->
+  <div class="row">
+    <div class="col-12">
+      <small class="text-muted">
+        Dibuat: {{ hadiah.created_at|date:"d M Y H:i" }} | Diperbarui: {{
+        hadiah.updated_at|date:"d M Y H:i" }}
+      </small>
+    </div>
+  </div>
+</div>
+
+<!-- Include Font Awesome -->
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+/>
+{% endblock %}
