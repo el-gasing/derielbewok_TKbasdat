@@ -494,9 +494,10 @@ class ClaimMissingMilesForm(forms.ModelForm):
 
     class Meta:
         model = ClaimMissingMiles
-        fields = ('flight_number', 'flight_date', 'miles_amount', 'reason', 'description')
+        fields = ('flight_number', 'ticket_number', 'flight_date', 'miles_amount', 'reason', 'description')
         widgets = {
             'flight_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: GA123'}),
+            'ticket_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor tiket'}),
             'flight_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'miles_amount': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
             'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Alasan claim'}),
@@ -514,6 +515,12 @@ class ClaimMissingMilesForm(forms.ModelForm):
         if not re.fullmatch(r"[A-Z0-9\-]+", flight_number):
             raise forms.ValidationError('Format nomor flight tidak valid.')
         return flight_number
+
+    def clean_ticket_number(self):
+        ticket_number = self.cleaned_data.get('ticket_number', '').strip()
+        if ticket_number:
+            return _sanitize_text(ticket_number, max_length=50)
+        return ticket_number
 
     def clean_reason(self):
         return _sanitize_text(self.cleaned_data.get('reason'), max_length=500)

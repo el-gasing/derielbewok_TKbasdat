@@ -25,6 +25,31 @@ class UserRole(models.Model):
         verbose_name_plural = 'User Roles'
 
 
+class Tier(models.Model):
+    """Model untuk Tier Member AeroMiles"""
+    TIER_CHOICES = [
+        ('bronze', 'Bronze'),
+        ('silver', 'Silver'),
+        ('gold', 'Gold'),
+        ('platinum', 'Platinum'),
+    ]
+    
+    tier_name = models.CharField(max_length=20, choices=TIER_CHOICES, unique=True)
+    minimal_tier_miles = models.BigIntegerField(help_text="Minimum miles required for this tier")
+    minimal_frekuensi_terbang = models.IntegerField(help_text="Minimum flight frequency for this tier")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.get_tier_name_display()}"
+    
+    class Meta:
+        verbose_name = 'Tier'
+        verbose_name_plural = 'Tiers'
+        ordering = ['minimal_tier_miles']
+
+
 class Member(models.Model):
     """Model untuk Member AeroMiles"""
     SALUTATION_CHOICES = [
@@ -42,6 +67,8 @@ class Member(models.Model):
     birth_date = models.DateField(null=True, blank=True)
     nationality = models.CharField(max_length=80, default='Indonesia')
     total_miles = models.BigIntegerField(default=0)
+    award_miles = models.BigIntegerField(default=0, help_text="Miles available for redeeming rewards")
+    tier = models.ForeignKey(Tier, on_delete=models.SET_NULL, null=True, blank=True, related_name='members')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -178,6 +205,7 @@ class ClaimMissingMiles(models.Model):
     member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='missing_miles_claims')
     claim_id = models.CharField(max_length=50, unique=True)
     flight_number = models.CharField(max_length=20)
+    ticket_number = models.CharField(max_length=50, blank=True, null=True)
     flight_date = models.DateField()
     miles_amount = models.BigIntegerField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')

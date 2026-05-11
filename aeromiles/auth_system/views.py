@@ -19,6 +19,7 @@ from .forms import (
     TransferMilesForm,
 )
 from .models import ClaimMissingMiles, Identity, Maskapai, Member, Mitra, Penyedia, Staff, TransferMiles
+from .services import check_duplicate_claim, update_member_tier
 
 
 def _get_member(user):
@@ -212,6 +213,19 @@ def member_claim_create_view(request):
     if request.method == 'POST':
         form = ClaimMissingMilesForm(request.POST)
         if form.is_valid():
+            flight_number = form.cleaned_data.get('flight_number')
+            ticket_number = form.cleaned_data.get('ticket_number')
+            flight_date = form.cleaned_data.get('flight_date')
+            
+            # Check for duplicate claims
+            duplicate_claim = check_duplicate_claim(member, flight_number, ticket_number, flight_date)
+            if duplicate_claim:
+                messages.error(
+                    request,
+                    f'ERROR: Klaim untuk penerbangan "{flight_number}" pada tanggal "{flight_date}" dengan nomor tiket "{ticket_number}" sudah pernah diajukan sebelumnya.'
+                )
+                return render(request, 'auth_system/member_claim_form.html', {'form': form, 'title': 'Buat Claim Missing Miles'})
+            
             claim = form.save(commit=False)
             claim.member = member
             claim.claim_id = _next_claim_id()
@@ -301,12 +315,23 @@ def staff_claim_update_view(request, claim_id):
             updated_claim.approved_by = staff
             updated_claim.save()
             
-            # Nambah total_miles member jika status berubah menjadi 'approved'
+            # Tambah total_miles member dan update tier jika status berubah menjadi 'approved'
             if old_status != 'approved' and updated_claim.status == 'approved':
                 member = updated_claim.member
                 member.total_miles += updated_claim.miles_amount
-                member.save()
-                messages.success(request, f'Claim {updated_claim.claim_id} berhasil disetujui. Miles sebesar {updated_claim.miles_amount:,} telah ditambahkan ke member.')
+                member.save(update_fields=['total_miles'])
+                
+                # Auto-update tier based on new total miles
+                update_member_tier(member)
+                
+                new_tier = member.tier
+                if new_tier:
+                    messages.success(
+                        request,
+                        f'SUKSES: Claim {updated_claim.claim_id} telah disetujui dari "{member.tier.tier_name}" menjadi "{new_tier.tier_name}" berdasarkan total miles yang dimiliki.'
+                    )
+                else:
+                    messages.success(request, f'Claim {updated_claim.claim_id} berhasil disetujui. Miles sebesar {updated_claim.miles_amount:,} telah ditambahkan ke member.')
             else:
                 messages.success(request, f'Claim {updated_claim.claim_id} berhasil diperbarui.')
             
