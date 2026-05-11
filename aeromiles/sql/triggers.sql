@@ -4,7 +4,7 @@
 -- These triggers implement business rules for the AeroMiles application
 -- 
 -- Triggers:
--- 1. TR_CHECK_DUPLICATE_MISSING_MILES_CLAIMS - Prevent duplicate missing miles claims
+-- 4. TR_CHECK_DUPLICATE_MISSING_MILES_CLAIMS - Pemeriksaan status klaim missing miles duplikat
 -- 2. TR_AUTO_UPDATE_MEMBER_TIER - Automatically update member tier based on total miles
 --
 -- Usage: Run this script on PostgreSQL database for online deployment
@@ -12,11 +12,11 @@
 
 
 -- ============================================================================
--- Trigger 1: Check for Duplicate Missing Miles Claims
+-- Trigger 4: Pemeriksaan Status Klaim Missing Miles yang Duplikat
 -- ============================================================================
--- Purpose: Prevent duplicate missing miles claims with same flight details
--- Checks: Same member, flight_number, ticket_number, and flight_date
--- Status: Only checks against 'pending' and 'approved' claims
+-- Purpose: Mencegah pengajuan klaim duplikat dengan kombinasi
+--          flight_number, tanggal_penerbangan, nomor_tiket, dan email_member.
+-- Status: Berlaku untuk status apa pun.
 --
 -- Error Message Format:
 -- ERROR: Klaim untuk penerbangan \"<flight_number>\" pada tanggal \"<flight_date>\" 
@@ -24,15 +24,25 @@
 
 CREATE OR REPLACE FUNCTION fn_check_duplicate_missing_miles_claims()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_member_email TEXT;
 BEGIN
+    SELECT LOWER(au.email)
+    INTO v_member_email
+    FROM auth_system_member am
+    JOIN auth_user au ON au.id = am.user_id
+    WHERE am.id = NEW.member_id;
+
     IF EXISTS (
-        SELECT 1 FROM auth_system_claimmissingmiles
-        WHERE member_id = NEW.member_id
-          AND UPPER(flight_number) = UPPER(NEW.flight_number)
-          AND flight_date = NEW.flight_date
-          AND (ticket_number IS NULL OR UPPER(ticket_number) = UPPER(NEW.ticket_number))
-          AND status IN ('pending', 'approved')
-          AND id != COALESCE(NEW.id, 0)
+        SELECT 1
+        FROM auth_system_claimmissingmiles c
+        JOIN auth_system_member m ON m.id = c.member_id
+        JOIN auth_user u ON u.id = m.user_id
+        WHERE UPPER(c.flight_number) = UPPER(NEW.flight_number)
+          AND c.flight_date = NEW.flight_date
+          AND COALESCE(UPPER(c.ticket_number), '') = COALESCE(UPPER(NEW.ticket_number), '')
+          AND LOWER(u.email) = v_member_email
+          AND c.id != COALESCE(NEW.id, 0)
     ) THEN
         RAISE EXCEPTION 'ERROR: Klaim untuk penerbangan "%" pada tanggal "%" dengan nomor tiket "%" sudah pernah diajukan sebelumnya.',
             NEW.flight_number, NEW.flight_date, NEW.ticket_number;

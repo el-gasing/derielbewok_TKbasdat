@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import DatabaseError, connection, transaction
 from django.db.models import F, Q
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, render, redirect
@@ -52,6 +52,19 @@ def _next_transfer_id():
         return 'TRF000001'
     last_num = int(last_transfer.transfer_id.replace('TRF', ''))
     return f'TRF{last_num + 1:06d}'
+
+
+def _extract_db_error_message(exc):
+    raw = str(exc).strip()
+    if not raw:
+        return 'Terjadi kesalahan saat memproses data di database.'
+
+    # PostgreSQL exceptions often include prefixes like "ERROR:" and extra details.
+    lines = [line.strip() for line in raw.splitlines() if line.strip()]
+    for line in lines:
+        if 'ERROR:' in line.upper():
+            return line.split('ERROR:', 1)[-1].strip() if 'ERROR:' in line else line
+    return lines[0]
 
 
 def _reward_catalog():
@@ -216,23 +229,31 @@ def member_claim_create_view(request):
             flight_number = form.cleaned_data.get('flight_number')
             ticket_number = form.cleaned_data.get('ticket_number')
             flight_date = form.cleaned_data.get('flight_date')
-            
-            # Check for duplicate claims
-            duplicate_claim = check_duplicate_claim(member, flight_number, ticket_number, flight_date)
+
+            duplicate_claim = check_duplicate_claim(
+                member=member,
+                flight_number=flight_number,
+                ticket_number=ticket_number,
+                flight_date=flight_date,
+            )
             if duplicate_claim:
                 messages.error(
                     request,
                     f'ERROR: Klaim untuk penerbangan "{flight_number}" pada tanggal "{flight_date}" dengan nomor tiket "{ticket_number}" sudah pernah diajukan sebelumnya.'
                 )
                 return render(request, 'auth_system/member_claim_form.html', {'form': form, 'title': 'Buat Claim Missing Miles'})
-            
+
             claim = form.save(commit=False)
             claim.member = member
             claim.claim_id = _next_claim_id()
             claim.status = 'pending'
-            claim.save()
-            messages.success(request, f'Claim berhasil dibuat dengan ID {claim.claim_id}.')
-            return redirect('auth_system:member_claim_list')
+            try:
+                with transaction.atomic():
+                    claim.save()
+                messages.success(request, f'Claim berhasil dibuat dengan ID {claim.claim_id}.')
+                return redirect('auth_system:member_claim_list')
+            except DatabaseError as exc:
+                messages.error(request, _extract_db_error_message(exc))
     else:
         form = ClaimMissingMilesForm()
 
@@ -262,9 +283,31 @@ def member_claim_update_view(request, claim_id):
     if request.method == 'POST':
         form = ClaimMissingMilesForm(request.POST, instance=claim)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Claim berhasil diperbarui.')
-            return redirect('auth_system:member_claim_list')
+            flight_number = form.cleaned_data.get('flight_number')
+            ticket_number = form.cleaned_data.get('ticket_number')
+            flight_date = form.cleaned_data.get('flight_date')
+
+            duplicate_claim = check_duplicate_claim(
+                member=member,
+                flight_number=flight_number,
+                ticket_number=ticket_number,
+                flight_date=flight_date,
+                exclude_claim_id=claim.id,
+            )
+            if duplicate_claim:
+                messages.error(
+                    request,
+                    f'ERROR: Klaim untuk penerbangan "{flight_number}" pada tanggal "{flight_date}" dengan nomor tiket "{ticket_number}" sudah pernah diajukan sebelumnya.'
+                )
+                return render(request, 'auth_system/member_claim_form.html', {'form': form, 'title': f'Ubah Claim {claim.claim_id}'})
+
+            try:
+                with transaction.atomic():
+                    form.save()
+                messages.success(request, 'Claim berhasil diperbarui.')
+                return redirect('auth_system:member_claim_list')
+            except DatabaseError as exc:
+                messages.error(request, _extract_db_error_message(exc))
     else:
         form = ClaimMissingMilesForm(instance=claim)
 
@@ -313,29 +356,43 @@ def staff_claim_update_view(request, claim_id):
         if form.is_valid():
             updated_claim = form.save(commit=False)
             updated_claim.approved_by = staff
-            updated_claim.save()
-            
-            # Tambah total_miles member dan update tier jika status berubah menjadi 'approved'
-            if old_status != 'approved' and updated_claim.status == 'approved':
-                member = updated_claim.member
-                member.total_miles += updated_claim.miles_amount
-                member.save(update_fields=['total_miles'])
-                
-                # Auto-update tier based on new total miles
-                update_member_tier(member)
-                
-                new_tier = member.tier
-                if new_tier:
-                    messages.success(
-                        request,
-                        f'SUKSES: Claim {updated_claim.claim_id} telah disetujui dari "{member.tier.tier_name}" menjadi "{new_tier.tier_name}" berdasarkan total miles yang dimiliki.'
-                    )
-                else:
-                    messages.success(request, f'Claim {updated_claim.claim_id} berhasil disetujui. Miles sebesar {updated_claim.miles_amount:,} telah ditambahkan ke member.')
-            else:
-                messages.success(request, f'Claim {updated_claim.claim_id} berhasil diperbarui.')
-            
-            return redirect('auth_system:staff_claim_list')
+            old_tier_name = updated_claim.member.tier.get_tier_name_display() if updated_claim.member.tier else 'None'
+
+            try:
+                with transaction.atomic():
+                    updated_claim.save()
+
+                    # Jika disetujui, akumulasi miles pada member.
+                    if old_status != 'approved' and updated_claim.status == 'approved':
+                        member = updated_claim.member
+                        member.total_miles += updated_claim.miles_amount
+                        member.save(update_fields=['total_miles'])
+
+                        # Gunakan stored procedure pada PostgreSQL; fallback lokal untuk SQLite.
+                        if connection.vendor == 'postgresql':
+                            with connection.cursor() as cursor:
+                                cursor.execute('SELECT sp_auto_update_member_tier(%s);', [member.id])
+                            member.refresh_from_db(fields=['tier'])
+                        else:
+                            update_member_tier(member)
+
+                        new_tier_name = member.tier.get_tier_name_display() if member.tier else 'None'
+                        if old_tier_name != new_tier_name:
+                            messages.success(
+                                request,
+                                f'SUKSES: Tier Member "{member.user.email}" telah diperbarui dari "{old_tier_name}" menjadi "{new_tier_name}" berdasarkan total miles yang dimiliki.'
+                            )
+                        else:
+                            messages.success(
+                                request,
+                                f'Claim {updated_claim.claim_id} disetujui. Miles sebesar {updated_claim.miles_amount:,} telah ditambahkan ke member.'
+                            )
+                    else:
+                        messages.success(request, f'Claim {updated_claim.claim_id} berhasil diperbarui.')
+
+                return redirect('auth_system:staff_claim_list')
+            except DatabaseError as exc:
+                messages.error(request, _extract_db_error_message(exc))
     else:
         form = StaffClaimUpdateForm(instance=claim)
 

@@ -21,6 +21,7 @@
 -- Purpose: Check if a duplicate missing miles claim exists
 -- Parameters:
 --   p_member_id - Member ID
+--   p_email_member - Email member
 --   p_flight_number - Flight number
 --   p_ticket_number - Ticket number (optional)
 --   p_flight_date - Flight date
@@ -29,6 +30,7 @@
 
 CREATE OR REPLACE FUNCTION sp_check_duplicate_missing_miles_claim(
     p_member_id BIGINT,
+        p_email_member VARCHAR,
     p_flight_number VARCHAR,
     p_ticket_number VARCHAR,
     p_flight_date DATE
@@ -38,12 +40,13 @@ DECLARE
     v_claim_id BIGINT;
 BEGIN
     SELECT id INTO v_claim_id
-    FROM auth_system_claimmissingmiles
-    WHERE member_id = p_member_id
-      AND UPPER(flight_number) = UPPER(p_flight_number)
-      AND flight_date = p_flight_date
-      AND (p_ticket_number IS NULL OR UPPER(ticket_number) = UPPER(p_ticket_number))
-      AND status IN ('pending', 'approved')
+        FROM auth_system_claimmissingmiles c
+        JOIN auth_system_member m ON m.id = c.member_id
+        JOIN auth_user u ON u.id = m.user_id
+        WHERE LOWER(u.email) = LOWER(p_email_member)
+            AND UPPER(c.flight_number) = UPPER(p_flight_number)
+            AND c.flight_date = p_flight_date
+            AND COALESCE(UPPER(c.ticket_number), '') = COALESCE(UPPER(p_ticket_number), '')
     LIMIT 1;
     
     RETURN v_claim_id;

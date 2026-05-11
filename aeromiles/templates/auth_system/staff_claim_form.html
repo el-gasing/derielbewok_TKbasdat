@@ -83,6 +83,15 @@
     }
     .info-list li:last-child { border-bottom:none; }
     .info-label { font-weight:700; color:#233247; }
+    .trigger-note {
+        border: 1px dashed #c8d7eb;
+        background: #f6faff;
+        color: #26476e;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 12px;
+        margin-top: 10px;
+    }
     @media (max-width: 992px) {
         .form-grid { grid-template-columns: 1fr; }
     }
@@ -141,6 +150,10 @@
                     <button type="submit" class="solid-button">Simpan Update</button>
                     <a href="{% url 'auth_system:staff_claim_list' %}" class="ghost-button">Batal</a>
                 </div>
+                <div class="trigger-note">
+                    Saat klaim disetujui, update tier member diproses di level database melalui trigger/stored procedure.
+                    Pesan sukses/error pada halaman ini mengikuti hasil proses tersebut.
+                </div>
             </form>
         </div>
 
@@ -150,6 +163,7 @@
             <ul class="info-list">
                 <li><span class="info-label">Member</span><span>{{ claim.member.member_id }} - {{ claim.member.user.username }}</span></li>
                 <li><span class="info-label">Flight</span><span>{{ claim.flight_number }}</span></li>
+                <li><span class="info-label">No. Tiket</span><span>{{ claim.ticket_number|default:'-' }}</span></li>
                 <li><span class="info-label">Tanggal</span><span>{{ claim.flight_date }}</span></li>
                 <li><span class="info-label">Miles</span><span>{{ claim.miles_amount }}</span></li>
                 <li><span class="info-label">Status</span><span>{{ claim.get_status_display }}</span></li>

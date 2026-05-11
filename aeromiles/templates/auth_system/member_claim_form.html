@@ -39,6 +39,24 @@
     .helper-list li {
         display:flex; gap:10px; align-items:flex-start; margin-bottom: 14px; color:#475569;
     }
+    .trigger-result {
+        border: 1px solid #b7d7ff;
+        background: #eef6ff;
+        color: #174a86;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 16px;
+        font-size: 14px;
+    }
+    .trigger-note {
+        border: 1px dashed #c8d7eb;
+        background: #f6faff;
+        color: #26476e;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-size: 12px;
+        margin-top: 8px;
+    }
     .helper-dot {
         width: 22px; height:22px; border-radius:50%; background:#e7f1ff; color:#1f5fa5;
         display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex:0 0 auto;
@@ -100,6 +118,18 @@
         <div class="card-panel">
             <form method="post">
                 {% csrf_token %}
+
+                {% if messages %}
+                    {% for message in messages %}
+                        {% if 'ERROR:' in message|stringformat:'s' or message.tags == 'error' %}
+                            <div class="trigger-result">
+                                <strong>Pesan Trigger/Database:</strong><br>
+                                {{ message }}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+
                 <div class="field-set">
                     {% for field in form %}
                         <div class="field-block" {% if field.name == 'reason' or field.name == 'description' %}style="grid-column: 1 / -1;"{% endif %}>
@@ -122,6 +152,10 @@
                 <div class="form-actions">
                     <a href="{% url 'auth_system:member_claim_list' %}" class="ghost-button">Batal</a>
                     <button type="submit" class="solid-button">Simpan Claim</button>
+                </div>
+                <div class="trigger-note">
+                    Validasi duplikasi klaim dijalankan di level database (trigger/stored procedure). Jika ada duplikasi,
+                    sistem akan menampilkan pesan error langsung dari database.
                 </div>
             </form>
         </div>

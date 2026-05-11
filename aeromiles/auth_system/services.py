@@ -2,11 +2,11 @@
 Business logic services for AeroMiles application.
 Handles duplicate checking, tier updates, and other business rules.
 """
-from django.db.models import Q, Count
+from django.db.models import Q
 from .models import ClaimMissingMiles, Member, Tier
 
 
-def check_duplicate_claim(member, flight_number, ticket_number, flight_date):
+def check_duplicate_claim(member, flight_number, ticket_number, flight_date, exclude_claim_id=None):
     """
     Check if a claim with the same flight details already exists.
     
@@ -25,17 +25,24 @@ def check_duplicate_claim(member, flight_number, ticket_number, flight_date):
     Returns:
         Existing claim or None
     """
+    normalized_ticket = (ticket_number or '').strip()
+
     query = Q(
-        member=member,
+        member__user__email__iexact=member.user.email,
         flight_number__iexact=flight_number,
         flight_date=flight_date,
-        status__in=['pending', 'approved']  # Only check pending and approved claims
     )
-    
-    if ticket_number:
-        query &= Q(ticket_number__iexact=ticket_number)
-    
-    existing_claim = ClaimMissingMiles.objects.filter(query).first()
+
+    if normalized_ticket:
+        query &= Q(ticket_number__iexact=normalized_ticket)
+    else:
+        query &= (Q(ticket_number__isnull=True) | Q(ticket_number=''))
+
+    existing_claims = ClaimMissingMiles.objects.filter(query)
+    if exclude_claim_id is not None:
+        existing_claims = existing_claims.exclude(id=exclude_claim_id)
+
+    existing_claim = existing_claims.first()
     return existing_claim
 
 
