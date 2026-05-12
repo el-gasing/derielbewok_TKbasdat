@@ -1,16 +1,4 @@
-
--- ============================================================================
 -- Stored Procedure 1: Check Duplicate Missing Miles Claim
--- ============================================================================
--- Purpose: Check if a duplicate missing miles claim exists
--- Parameters:
---   p_member_id - Member ID
---   p_email_member - Email member
---   p_flight_number - Flight number
---   p_ticket_number - Ticket number (optional)
---   p_flight_date - Flight date
--- Returns:
---   r_duplicate_claim_id - ID of duplicate claim if exists, NULL otherwise
 
 CREATE OR REPLACE FUNCTION sp_check_duplicate_missing_miles_claim(
     p_member_id BIGINT,
@@ -37,14 +25,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
--- ============================================================================
 -- Stored Procedure 2: Get Member Tier
--- ============================================================================
--- Parameters:
---   p_total_miles - Total miles amount
--- Returns:
---   r_tier_id - ID of appropriate tier, NULL if no tier matches
 
 CREATE OR REPLACE FUNCTION sp_get_member_tier(p_total_miles BIGINT)
 RETURNS BIGINT AS $$
@@ -63,13 +44,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- ============================================================================
 -- Stored Procedure 3: Auto Update Member Tier
--- ============================================================================
--- Parameters:
---   p_member_id - Member ID
--- Returns:
---   r_success - TRUE if tier was updated, FALSE otherwise
+
 
 CREATE OR REPLACE FUNCTION sp_auto_update_member_tier(p_member_id BIGINT)
 RETURNS BOOLEAN AS $$
@@ -106,14 +82,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- ============================================================================
 -- Stored Procedure 4: Process Claim Approval
--- ============================================================================
--- Parameters:
---   p_claim_id - Claim ID to process
---   p_staff_id - Staff ID approving the claim
--- Returns:
---   r_success - TRUE if successfully processed, FALSE otherwise
+
 
 CREATE OR REPLACE FUNCTION sp_process_claim_approval(
     p_claim_id BIGINT,
@@ -153,14 +123,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- ============================================================================
 -- Stored Procedure 5: Add Miles to Member
--- ============================================================================
--- Parameters:
---   p_member_id - Member ID
---   p_miles_amount - Amount of miles to add
--- Returns:
---   r_new_total_miles - New total miles for member
+
 
 CREATE OR REPLACE FUNCTION sp_add_miles_to_member(
     p_member_id BIGINT,
@@ -182,21 +146,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- ============================================================================
 -- Stored Procedure 6: Get Member Tier Info
--- ============================================================================
--- Parameters:
---   p_member_id - Member ID
--- Returns:
---   Table with columns:
---   - member_id - Member ID
---   - member_name - Member full name
---   - total_miles - Member's total miles
---   - current_tier - Current tier name
---   - current_tier_id - Current tier ID
---   - next_tier - Next achievable tier name
---   - next_tier_id - Next tier ID
---   - miles_to_next_tier - Miles needed to reach next tier
 
 CREATE OR REPLACE FUNCTION sp_get_member_tier_info(p_member_id BIGINT)
 RETURNS TABLE (

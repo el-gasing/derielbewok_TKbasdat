@@ -1,4 +1,4 @@
--- TK04 Trigger 4 - Pemeriksaan Status Klaim Missing Miles Duplikat
+-- TK04 Trigger 4 
 
 DROP TRIGGER IF EXISTS TR_CHECK_DUPLICATE_MISSING_MILES_CLAIMS ON auth_system_claimmissingmiles;
 DROP FUNCTION IF EXISTS fn_check_duplicate_missing_miles_claims();
@@ -63,9 +63,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- ============================================================================
 -- Trigger: TR_CHECK_DUPLICATE_MISSING_MILES_CLAIMS
--- ============================================================================
 CREATE TRIGGER TR_CHECK_DUPLICATE_MISSING_MILES_CLAIMS
 BEFORE INSERT OR UPDATE ON auth_system_claimmissingmiles
 FOR EACH ROW
