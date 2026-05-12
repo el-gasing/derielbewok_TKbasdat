@@ -1,18 +1,10 @@
--- ============================================================================
 -- TK04 Trigger 4 - Pemeriksaan Status Klaim Missing Miles Duplikat
--- Format pengumpulan: TK04_Trigger_4_[Kelas]_[Nama_Kelompok].sql
--- ============================================================================
 
--- Optional cleanup agar aman saat re-run
 DROP TRIGGER IF EXISTS TR_CHECK_DUPLICATE_MISSING_MILES_CLAIMS ON auth_system_claimmissingmiles;
 DROP FUNCTION IF EXISTS fn_check_duplicate_missing_miles_claims();
 DROP FUNCTION IF EXISTS sp_check_duplicate_missing_miles_claim(BIGINT, VARCHAR, VARCHAR, VARCHAR, DATE);
 
-
--- ============================================================================
 -- Stored Procedure: Check Duplicate Missing Miles Claim
--- Kombinasi cek: flight_number, flight_date, ticket_number, email_member
--- ============================================================================
 CREATE OR REPLACE FUNCTION sp_check_duplicate_missing_miles_claim(
     p_member_id BIGINT,
     p_email_member VARCHAR,
@@ -39,11 +31,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- ============================================================================
 -- Trigger Function: Prevent Duplicate Claim Insert/Update
--- Kombinasi cek: flight_number, flight_date, ticket_number, email_member
--- Berlaku untuk status apa pun
--- ============================================================================
 CREATE OR REPLACE FUNCTION fn_check_duplicate_missing_miles_claims()
 RETURNS TRIGGER AS $$
 DECLARE

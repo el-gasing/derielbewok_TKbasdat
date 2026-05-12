@@ -1,26 +1,5 @@
--- ============================================================================
--- AeroMiles Database Triggers (PostgreSQL)
--- ============================================================================
--- These triggers implement business rules for the AeroMiles application
--- 
--- Triggers:
--- 4. TR_CHECK_DUPLICATE_MISSING_MILES_CLAIMS - Pemeriksaan status klaim missing miles duplikat
--- 2. TR_AUTO_UPDATE_MEMBER_TIER - Automatically update member tier based on total miles
---
--- Usage: Run this script on PostgreSQL database for online deployment
--- ============================================================================
 
-
--- ============================================================================
 -- Trigger 4: Pemeriksaan Status Klaim Missing Miles yang Duplikat
--- ============================================================================
--- Purpose: Mencegah pengajuan klaim duplikat dengan kombinasi
---          flight_number, tanggal_penerbangan, nomor_tiket, dan email_member.
--- Status: Berlaku untuk status apa pun.
---
--- Error Message Format:
--- ERROR: Klaim untuk penerbangan \"<flight_number>\" pada tanggal \"<flight_date>\" 
---        dengan nomor tiket \"<ticket_number>\" sudah pernah diajukan sebelumnya.
 
 CREATE OR REPLACE FUNCTION fn_check_duplicate_missing_miles_claims()
 RETURNS TRIGGER AS $$
@@ -57,18 +36,7 @@ BEFORE INSERT OR UPDATE ON auth_system_claimmissingmiles
 FOR EACH ROW
 EXECUTE FUNCTION fn_check_duplicate_missing_miles_claims();
 
-
--- ============================================================================
 -- Trigger 2: Auto Update Member Tier Based on Total Miles
--- ============================================================================
--- Purpose: Automatically update member tier when total_miles changes
--- When: Triggered when claim is approved and miles are added to member
--- Tier Logic: Based on TIER table with minimal_tier_miles threshold
---
--- Flow:
--- 1. When claim approved -> miles added to member.total_miles
--- 2. This trigger checks if tier needs updating
--- 3. Sets appropriate tier based on minimal_tier_miles threshold
 
 CREATE OR REPLACE FUNCTION fn_auto_update_member_tier()
 RETURNS TRIGGER AS $$
@@ -101,12 +69,7 @@ BEFORE UPDATE ON auth_system_member
 FOR EACH ROW
 EXECUTE FUNCTION fn_auto_update_member_tier();
 
-
--- ============================================================================
 -- Trigger 3: Update Member Total Miles When Claim is Approved
--- ============================================================================
--- Purpose: Automatically add miles to member when claim status changes to 'approved'
--- This ensures data consistency between claims and member total_miles
 
 CREATE OR REPLACE FUNCTION fn_add_miles_on_claim_approval()
 RETURNS TRIGGER AS $$
@@ -128,8 +91,3 @@ CREATE TRIGGER TR_ADD_MILES_ON_CLAIM_APPROVAL
 AFTER UPDATE ON auth_system_claimmissingmiles
 FOR EACH ROW
 EXECUTE FUNCTION fn_add_miles_on_claim_approval();
-
-
--- ============================================================================
--- End of Triggers
--- ============================================================================

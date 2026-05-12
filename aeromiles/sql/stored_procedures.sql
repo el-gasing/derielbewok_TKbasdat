@@ -1,19 +1,3 @@
--- ============================================================================
--- AeroMiles Stored Procedures (PostgreSQL)
--- ============================================================================
--- These stored procedures implement business logic for the AeroMiles application
--- 
--- Procedures:
--- 1. sp_check_duplicate_missing_miles_claim - Check for duplicate claims
--- 2. sp_get_member_tier - Get member's tier based on total miles
--- 3. sp_auto_update_member_tier - Auto-update member tier
--- 4. sp_process_claim_approval - Process claim approval with mile transfer
--- 5. sp_add_miles_to_member - Add miles to member
--- 6. sp_get_member_tier_info - Get detailed tier information for member
---
--- Usage: Run this script on PostgreSQL database for online deployment
--- ============================================================================
-
 
 -- ============================================================================
 -- Stored Procedure 1: Check Duplicate Missing Miles Claim
@@ -57,7 +41,6 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 -- Stored Procedure 2: Get Member Tier
 -- ============================================================================
--- Purpose: Get appropriate tier for a given total miles
 -- Parameters:
 --   p_total_miles - Total miles amount
 -- Returns:
@@ -83,7 +66,6 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 -- Stored Procedure 3: Auto Update Member Tier
 -- ============================================================================
--- Purpose: Automatically update member's tier based on total_miles
 -- Parameters:
 --   p_member_id - Member ID
 -- Returns:
@@ -127,7 +109,6 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 -- Stored Procedure 4: Process Claim Approval
 -- ============================================================================
--- Purpose: Process claim approval - add miles to member and update tier
 -- Parameters:
 --   p_claim_id - Claim ID to process
 --   p_staff_id - Staff ID approving the claim
@@ -175,7 +156,6 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 -- Stored Procedure 5: Add Miles to Member
 -- ============================================================================
--- Purpose: Add miles to member's total_miles
 -- Parameters:
 --   p_member_id - Member ID
 --   p_miles_amount - Amount of miles to add
@@ -205,7 +185,6 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 -- Stored Procedure 6: Get Member Tier Info
 -- ============================================================================
--- Purpose: Get comprehensive tier information for a member
 -- Parameters:
 --   p_member_id - Member ID
 -- Returns:
@@ -272,8 +251,3 @@ BEGIN
     WHERE m.id = p_member_id;
 END;
 $$ LANGUAGE plpgsql;
-
-
--- ============================================================================
--- End of Stored Procedures
--- ============================================================================
