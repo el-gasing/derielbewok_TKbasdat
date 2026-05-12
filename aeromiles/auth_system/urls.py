@@ -9,8 +9,13 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('profile/', views.profile_view, name='profile'),
+    path('profile/settings/', views.profile_settings_view, name='profile_settings'),
     path('register/member/', views.register_member_view, name='register_member'),
     path('register/staff/', views.register_staff_view, name='register_staff'),
+    path('staff/members/', views.manage_members_list_view, name='manage_members_list'),
+    path('staff/members/add/', views.add_member_view, name='add_member'),
+    path('staff/members/<str:member_id>/edit/', views.edit_member_view, name='edit_member'),
+    path('staff/members/<str:member_id>/delete/', views.delete_member_view, name='delete_member'),
     path('member/identities/', views.member_identities_list_view, name='member_identities_list'),
     path('member/identities/add/', views.add_member_identity_view, name='add_member_identity'),
     path('member/identities/<int:identity_id>/edit/', views.edit_member_identity_view, name='edit_member_identity'),
@@ -28,11 +33,15 @@ urlpatterns = [
     path('staff/rewards/', views.staff_rewards_view, name='staff_rewards'),
     path('staff/partners/', views.staff_partners_view, name='staff_partners'),
     path('staff/reports/transactions/', views.staff_transaction_report_view, name='staff_transaction_report'),
-    path('staff/members/', views.manage_members_list, name='manage_members_list'),
-    path('staff/members/add/', views.add_member, name='add_member'),
-    path('staff/members/edit/<str:member_id>/', views.edit_member, name='edit_member'),
-    path('staff/members/delete/<str:member_id>/', views.delete_member, name='delete_member'),
+
+    # Staff: Hadiah (Reward/Prize) Management
+    path('staff/hadiah/', views.staff_hadiah_list_view, name='staff_hadiah_list'),
+    path('staff/hadiah/create/', views.staff_hadiah_create_view, name='staff_hadiah_create'),
+    path('staff/hadiah/<int:hadiah_id>/', views.staff_hadiah_detail_view, name='staff_hadiah_detail'),
+    path('staff/hadiah/<int:hadiah_id>/edit/', views.staff_hadiah_update_view, name='staff_hadiah_update'),
+    path('staff/hadiah/<int:hadiah_id>/delete/', views.staff_hadiah_delete_view, name='staff_hadiah_delete'),
+
+    # Member: Transfer Miles
     path('member/transfer/', views.member_transfer_list_view, name='member_transfer_list'),
     path('member/transfer/add/', views.member_transfer_create_view, name='member_transfer_create'),
-    
 ]
