@@ -49,3 +49,25 @@ CREATE TRIGGER TR_VALIDATE_REDEEM_HADIAH
 BEFORE INSERT ON auth_system_redeem
 FOR EACH ROW
 EXECUTE FUNCTION fn_validate_and_update_redeem();
+
+DROP TRIGGER IF EXISTS TR_SYNC_PEMBELIAN_PACKAGE ON auth_system_memberawardmilespackage;
+DROP FUNCTION IF EXISTS fn_sync_miles_pembelian_package();
+CREATE OR REPLACE FUNCTION fn_sync_miles_pembelian_package()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_jumlah_award_miles BIGINT;
+BEGIN
+
+    SELECT jumlah_award_miles INTO v_jumlah_award_miles
+    FROM auth_system_awardmilespackage
+    WHERE id = NEW.award_miles_package_id;
+
+    UPDATE auth_system_member
+    SET award_miles = award_miles + v_jumlah_award_miles,
+        total_miles = total_miles + v_jumlah_award_miles
+    WHERE id = NEW.member_id;
+
+    RAISE NOTICE 'SUKSES: Pembelian package berhasil. Award miles dan total miles Anda bertambah % miles.', v_jumlah_award_miles;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
