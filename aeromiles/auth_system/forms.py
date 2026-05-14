@@ -4,10 +4,9 @@ from datetime import date
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
-from django.db.models import Q
 from django.utils.html import strip_tags
 from django.db import connection
-from .models import Bandara, ClaimMissingMiles, Identity, Maskapai, Member, Staff, Hadiah, Penyedia, Mitra
+from .models import Bandara, ClaimMissingMiles, Identity, Maskapai, Member, Staff, Mitra
 
 
 def _sanitize_text(value, max_length=None):
@@ -1296,80 +1295,112 @@ class IdentityForm(forms.ModelForm):
         return cleaned
 
 
-class HadiahForm(forms.ModelForm):
+def _generate_kode_hadiah():
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT kode_hadiah FROM auth_system_hadiah WHERE kode_hadiah LIKE 'RWD-%' ORDER BY id DESC LIMIT 1"
+        )
+        row = cursor.fetchone()
+    if row:
+        try:
+            last_number = int(row[0].split('-')[-1])
+        except (TypeError, ValueError):
+            last_number = 0
+    else:
+        last_number = 0
+    return f"RWD-{last_number + 1:03d}"
+
+
+class HadiahForm(forms.Form):
     """Form untuk membuat/mengedit Hadiah"""
 
-    class Meta:
-        model = Hadiah
-        fields = (
-            'kode_hadiah',
-            'nama_hadiah',
-            'penyedia',
-            'miles_diperlukan',
-            'deskripsi',
-            'tanggal_valid_mulai',
-            'tanggal_valid_akhir',
-        )
-        widgets = {
-            'kode_hadiah': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Kode hadiah akan digenerate otomatis',
-                'maxlength': '20'
-            }),
-            'nama_hadiah': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Nama Hadiah',
-                'maxlength': '100'
-            }),
-            'deskripsi': forms.Textarea(attrs={
-                'class': 'form-control',
-                'placeholder': 'Deskripsi hadiah',
-                'rows': 3
-            }),
-            'penyedia': forms.Select(attrs={'class': 'form-select'}),
-            'miles_diperlukan': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Miles dibutuhkan',
-                'min': '1'
-            }),
-            'tanggal_valid_mulai': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date'
-            }),
-            'tanggal_valid_akhir': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date'
-            }),
-        }
+    kode_hadiah = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Kode hadiah akan digenerate otomatis',
+            'maxlength': '20',
+        }),
+    )
+    nama_hadiah = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nama Hadiah',
+            'maxlength': '100',
+        }),
+    )
+    penyedia = forms.ChoiceField(
+        label='Penyedia',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    miles_diperlukan = forms.IntegerField(
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Miles dibutuhkan',
+            'min': '1',
+        }),
+    )
+    deskripsi = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'placeholder': 'Deskripsi hadiah',
+            'rows': 3,
+        }),
+    )
+    tanggal_valid_mulai = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+    )
+    tanggal_valid_akhir = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+    )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, hadiah_id=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self._hadiah_id = hadiah_id
+
         _ensure_default_penyedia()
         _ensure_default_mitra()
 
-        penyedia_filter = Q(is_active=True)
-        if self.instance and self.instance.pk:
-            if self.instance.penyedia_id:
-                penyedia_filter |= Q(pk=self.instance.penyedia_id)
+        with connection.cursor() as cursor:
+            if hadiah_id:
+                cursor.execute("""
+                    SELECT DISTINCT p.id, p.name
+                    FROM auth_system_penyedia p
+                    WHERE p.is_active = TRUE
+                       OR p.id = (SELECT penyedia_id FROM auth_system_hadiah WHERE id = %s)
+                    ORDER BY p.name
+                """, [hadiah_id])
+            else:
+                cursor.execute(
+                    "SELECT id, name FROM auth_system_penyedia WHERE is_active = TRUE ORDER BY name"
+                )
+            rows = cursor.fetchall()
 
-        self.fields['penyedia'].queryset = Penyedia.objects.filter(penyedia_filter).order_by('name')
-        self.fields['penyedia'].empty_label = 'Pilih penyedia'
-        self.fields['penyedia'].label_from_instance = lambda obj: obj.name
+        self.fields['penyedia'].choices = [('', 'Pilih penyedia')] + [
+            (str(r[0]), r[1]) for r in rows
+        ]
 
-        if self.instance and self.instance.pk:
+        if hadiah_id:
             self.fields['kode_hadiah'].disabled = True
             self.fields['kode_hadiah'].help_text = 'Kode hadiah tidak dapat diubah.'
         else:
-            self.fields['kode_hadiah'].required = False
-            self.fields['kode_hadiah'].initial = Hadiah.generate_kode_hadiah()
+            self.fields['kode_hadiah'].initial = _generate_kode_hadiah()
             self.fields['kode_hadiah'].widget.attrs['readonly'] = True
 
     def clean_kode_hadiah(self):
-        if self.instance and self.instance.pk:
-            return self.instance.kode_hadiah
-
-        kode = _sanitize_text(self.cleaned_data.get('kode_hadiah'), max_length=20).upper()
-        return kode or Hadiah.generate_kode_hadiah()
+        if self._hadiah_id:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT kode_hadiah FROM auth_system_hadiah WHERE id = %s", [self._hadiah_id]
+                )
+                row = cursor.fetchone()
+            return row[0] if row else ''
+        kode = _sanitize_text(self.cleaned_data.get('kode_hadiah'), max_length=20)
+        return (kode.upper() if kode else None) or _generate_kode_hadiah()
 
     def clean_nama_hadiah(self):
         return _sanitize_text(self.cleaned_data.get('nama_hadiah'), max_length=100)
@@ -1391,20 +1422,45 @@ class HadiahForm(forms.ModelForm):
         if tanggal_mulai and tanggal_akhir and tanggal_akhir < tanggal_mulai:
             self.add_error('tanggal_valid_akhir', 'Tanggal akhir harus lebih besar atau sama dengan tanggal mulai.')
 
-        if not self.instance.pk and tanggal_mulai and tanggal_mulai < date.today():
+        if not self._hadiah_id and tanggal_mulai and tanggal_mulai < date.today():
             self.add_error('tanggal_valid_mulai', 'Tanggal mulai tidak boleh di masa lalu.')
 
         return cleaned
 
-    def save(self, commit=True):
-        hadiah = super().save(commit=False)
-        if not hadiah.status:
-            hadiah.status = 'active'
-        if not hadiah.jumlah_tersedia:
-            hadiah.jumlah_tersedia = 1
-        if commit:
-            hadiah.save()
-        return hadiah
+    def save(self):
+        from types import SimpleNamespace
+        d = self.cleaned_data
+        penyedia_id = int(d['penyedia']) if d.get('penyedia') else None
+
+        with connection.cursor() as cursor:
+            if self._hadiah_id:
+                cursor.execute("""
+                    UPDATE auth_system_hadiah
+                    SET nama_hadiah = %s, penyedia_id = %s, miles_diperlukan = %s,
+                        deskripsi = %s, tanggal_valid_mulai = %s, tanggal_valid_akhir = %s,
+                        updated_at = NOW()
+                    WHERE id = %s
+                    RETURNING id, kode_hadiah, nama_hadiah
+                """, [
+                    d['nama_hadiah'], penyedia_id, d['miles_diperlukan'],
+                    d.get('deskripsi') or '', d['tanggal_valid_mulai'],
+                    d['tanggal_valid_akhir'], self._hadiah_id,
+                ])
+            else:
+                cursor.execute("""
+                    INSERT INTO auth_system_hadiah
+                        (kode_hadiah, nama_hadiah, penyedia_id, miles_diperlukan,
+                         deskripsi, tanggal_valid_mulai, tanggal_valid_akhir,
+                         status, jumlah_tersedia, jumlah_terjual, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'active', 1, 0, NOW(), NOW())
+                    RETURNING id, kode_hadiah, nama_hadiah
+                """, [
+                    d['kode_hadiah'], d['nama_hadiah'], penyedia_id, d['miles_diperlukan'],
+                    d.get('deskripsi') or '', d['tanggal_valid_mulai'], d['tanggal_valid_akhir'],
+                ])
+            row = cursor.fetchone()
+
+        return SimpleNamespace(id=row[0], kode_hadiah=row[1], nama_hadiah=row[2])
 
 
 class MitraForm(forms.Form):

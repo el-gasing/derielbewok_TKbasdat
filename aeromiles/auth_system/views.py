@@ -38,8 +38,8 @@ from .forms import (
     _ensure_default_mitra,
 )
 from .models import (
-    AwardMilesPackage, Bandara, ClaimMissingMiles, Hadiah, Identity,
-    Maskapai, Member, MemberAwardMilesPackage, Mitra, Penyedia,
+    AwardMilesPackage, Bandara, ClaimMissingMiles, Identity,
+    Maskapai, Member, MemberAwardMilesPackage, Mitra,
     Redeem, Staff, TransferMiles,
 )
 from .services import check_duplicate_claim, update_member_tier
@@ -1842,16 +1842,26 @@ def staff_hadiah_update_view(request, hadiah_id):
         messages.error(request, 'Halaman ini hanya untuk staf.')
         return redirect('auth_system:dashboard')
 
-    hadiah = get_object_or_404(Hadiah.objects.select_related('penyedia', 'mitra'), id=hadiah_id)
+    hadiah = _get_hadiah_by_id(hadiah_id)
+    if not hadiah:
+        raise Http404
 
     if request.method == 'POST':
-        form = HadiahForm(request.POST, instance=hadiah)
+        form = HadiahForm(request.POST, hadiah_id=hadiah_id)
         if form.is_valid():
             updated_hadiah = form.save()
             messages.success(request, f'Hadiah "{updated_hadiah.nama_hadiah}" berhasil diperbarui.')
             return redirect('auth_system:staff_hadiah_detail', hadiah_id=hadiah.id)
     else:
-        form = HadiahForm(instance=hadiah)
+        form = HadiahForm(initial={
+            'kode_hadiah': hadiah.kode_hadiah,
+            'nama_hadiah': hadiah.nama_hadiah,
+            'penyedia': str(hadiah.penyedia_id) if hadiah.penyedia_id else '',
+            'miles_diperlukan': hadiah.miles_diperlukan,
+            'deskripsi': hadiah.deskripsi,
+            'tanggal_valid_mulai': hadiah.tanggal_valid_mulai,
+            'tanggal_valid_akhir': hadiah.tanggal_valid_akhir,
+        }, hadiah_id=hadiah_id)
 
     context = {
         'form': form,
@@ -1871,15 +1881,19 @@ def staff_hadiah_delete_view(request, hadiah_id):
         messages.error(request, 'Halaman ini hanya untuk staf.')
         return redirect('auth_system:dashboard')
 
-    hadiah = get_object_or_404(Hadiah.objects.select_related('penyedia', 'mitra'), id=hadiah_id)
+    hadiah = _get_hadiah_by_id(hadiah_id)
+    if not hadiah:
+        raise Http404
     nama_hadiah = hadiah.nama_hadiah
 
-    if not hadiah.sudah_kadaluarsa:
+    from datetime import date as _date
+    if not (hadiah.tanggal_valid_akhir and hadiah.tanggal_valid_akhir < _date.today()):
         messages.error(request, 'Hadiah hanya dapat dihapus jika periode validitasnya sudah selesai.')
         return redirect('auth_system:staff_hadiah_detail', hadiah_id=hadiah.id)
 
     if request.method == 'POST':
-        hadiah.delete()
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM auth_system_hadiah WHERE id = %s", [hadiah_id])
         messages.success(request, f'Hadiah "{nama_hadiah}" berhasil dihapus.')
         return redirect('auth_system:staff_hadiah_list')
 
