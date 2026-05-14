@@ -1,6 +1,9 @@
 
 -- TRIGGER 1: Email Duplication Check on Registration
 
+DROP TRIGGER IF EXISTS TR_CHECK_DUPLICATE_EMAIL ON auth_user;
+DROP FUNCTION IF EXISTS fn_check_duplicate_email();
+
 CREATE OR REPLACE FUNCTION fn_check_duplicate_email()
 RETURNS TRIGGER AS $$
 BEGIN

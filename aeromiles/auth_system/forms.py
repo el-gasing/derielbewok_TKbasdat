@@ -5,7 +5,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
 from django.utils.html import strip_tags
-from django.db import connection
+from django.db import connection, DatabaseError
 from .models import Bandara, ClaimMissingMiles, Identity, Maskapai, Member, Staff, Mitra
 
 
@@ -120,6 +120,13 @@ def _email_exists(email, exclude_user_id=None):
     with connection.cursor() as cursor:
         cursor.execute(sql, params)
         return cursor.fetchone() is not None
+
+
+def _extract_trigger_msg(e):
+    first_line = str(e).split('\n')[0].strip()
+    while first_line.upper().startswith('ERROR:'):
+        first_line = first_line[6:].strip()
+    return first_line or str(e).split('\n')[0]
 
 
 def _username_exists(username):
@@ -297,42 +304,45 @@ class MemberRegistrationForm(UserCreationForm):
             return user
 
         hashed_pwd = make_password(self.cleaned_data['password1'])
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO auth_user
-                    (username, email, first_name, last_name, password,
-                     is_superuser, is_staff, is_active, date_joined)
-                VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
-                RETURNING id
-            """, [
-                self.cleaned_data['username'], self.cleaned_data['email'],
-                self.cleaned_data['first_name'], self.cleaned_data['last_name'],
-                hashed_pwd,
-            ])
-            user_id = cursor.fetchone()[0]
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO auth_user
+                        (username, email, first_name, last_name, password,
+                         is_superuser, is_staff, is_active, date_joined)
+                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                    RETURNING id
+                """, [
+                    self.cleaned_data['username'], self.cleaned_data['email'],
+                    self.cleaned_data['first_name'], self.cleaned_data['last_name'],
+                    hashed_pwd,
+                ])
+                user_id = cursor.fetchone()[0]
 
-            cursor.execute("SELECT member_id FROM auth_system_member ORDER BY id DESC LIMIT 1")
-            last = cursor.fetchone()
-            if last:
-                try:
-                    next_num = int(last[0].replace('AMS', '')) + 1
-                except (ValueError, AttributeError):
+                cursor.execute("SELECT member_id FROM auth_system_member ORDER BY id DESC LIMIT 1")
+                last = cursor.fetchone()
+                if last:
+                    try:
+                        next_num = int(last[0].replace('AMS', '')) + 1
+                    except (ValueError, AttributeError):
+                        next_num = 1
+                else:
                     next_num = 1
-            else:
-                next_num = 1
-            member_id_val = f"AMS{next_num:06d}"
+                member_id_val = f"AMS{next_num:06d}"
 
-            cursor.execute("""
-                INSERT INTO auth_system_member
-                    (user_id, member_id, salutation, country_code, phone_number,
-                     birth_date, nationality, total_miles, award_miles, is_active,
-                     created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, 0, 0, TRUE, NOW(), NOW())
-            """, [
-                user_id, member_id_val, self.cleaned_data['salutation'],
-                self.cleaned_data['country_code'], self.cleaned_data['phone_number'],
-                self.cleaned_data['birth_date'], self.cleaned_data['nationality'],
-            ])
+                cursor.execute("""
+                    INSERT INTO auth_system_member
+                        (user_id, member_id, salutation, country_code, phone_number,
+                         birth_date, nationality, total_miles, award_miles, is_active,
+                         created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 0, 0, TRUE, NOW(), NOW())
+                """, [
+                    user_id, member_id_val, self.cleaned_data['salutation'],
+                    self.cleaned_data['country_code'], self.cleaned_data['phone_number'],
+                    self.cleaned_data['birth_date'], self.cleaned_data['nationality'],
+                ])
+        except DatabaseError as e:
+            raise forms.ValidationError(_extract_trigger_msg(e))
         return User.objects.get(pk=user_id)
 
     def clean_username(self):
@@ -354,14 +364,9 @@ class MemberRegistrationForm(UserCreationForm):
         return value
 
     def clean_email(self):
-        """Ensure email is unique for member registration"""
         email = self.cleaned_data.get('email', '').strip()
         if not email:
             raise forms.ValidationError('Email harus diisi.')
-        
-        if _email_exists(email):
-            raise forms.ValidationError('Email ini sudah terdaftar. Gunakan email lain atau login dengan akun yang ada.')
-
         return email
 
 
@@ -418,45 +423,45 @@ class StaffMemberCreateForm(UserCreationForm):
             return user
 
         hashed_pwd = make_password(self.cleaned_data['password1'])
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO auth_user
-                    (username, email, first_name, last_name, password,
-                     is_superuser, is_staff, is_active, date_joined)
-                VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
-                RETURNING id
-            """, [
-                self.cleaned_data['username'], self.cleaned_data['email'],
-                self.cleaned_data['first_name'], self.cleaned_data['last_name'],
-                hashed_pwd,
-            ])
-            user_id = cursor.fetchone()[0]
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO auth_user
+                        (username, email, first_name, last_name, password,
+                         is_superuser, is_staff, is_active, date_joined)
+                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                    RETURNING id
+                """, [
+                    self.cleaned_data['username'], self.cleaned_data['email'],
+                    self.cleaned_data['first_name'], self.cleaned_data['last_name'],
+                    hashed_pwd,
+                ])
+                user_id = cursor.fetchone()[0]
 
-            cursor.execute("SELECT member_id FROM auth_system_member ORDER BY id DESC LIMIT 1")
-            last = cursor.fetchone()
-            if last:
-                try:
-                    next_num = int(last[0].replace('AMS', '')) + 1
-                except (ValueError, AttributeError):
+                cursor.execute("SELECT member_id FROM auth_system_member ORDER BY id DESC LIMIT 1")
+                last = cursor.fetchone()
+                if last:
+                    try:
+                        next_num = int(last[0].replace('AMS', '')) + 1
+                    except (ValueError, AttributeError):
+                        next_num = 1
+                else:
                     next_num = 1
-            else:
-                next_num = 1
-            member_id_val = f"AMS{next_num:06d}"
+                member_id_val = f"AMS{next_num:06d}"
 
-            cursor.execute("""
-                INSERT INTO auth_system_member
-                    (user_id, member_id, salutation, country_code, phone_number,
-                     nationality, total_miles, award_miles, is_active,
-                     created_at, updated_at)
-                VALUES (%s, %s, 'mr', '+62', %s, 'Indonesia', 0, 0, TRUE, NOW(), NOW())
-            """, [user_id, member_id_val, self.cleaned_data.get('phone_number', '')])
+                cursor.execute("""
+                    INSERT INTO auth_system_member
+                        (user_id, member_id, salutation, country_code, phone_number,
+                         nationality, total_miles, award_miles, is_active,
+                         created_at, updated_at)
+                    VALUES (%s, %s, 'mr', '+62', %s, 'Indonesia', 0, 0, TRUE, NOW(), NOW())
+                """, [user_id, member_id_val, self.cleaned_data.get('phone_number', '')])
+        except DatabaseError as e:
+            raise forms.ValidationError(_extract_trigger_msg(e))
         return User.objects.get(pk=user_id)
 
     def clean_email(self):
-        email = self.cleaned_data.get('email')
-        if _email_exists(email):
-            raise forms.ValidationError('Email sudah digunakan.')
-        return email
+        return self.cleaned_data.get('email')
 
     def clean_first_name(self):
         return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
@@ -614,44 +619,46 @@ class StaffRegistrationForm(UserCreationForm):
             return user
 
         hashed_pwd = make_password(self.cleaned_data['password1'])
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO auth_user
-                    (username, email, first_name, last_name, password,
-                     is_superuser, is_staff, is_active, date_joined)
-                VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
-                RETURNING id
-            """, [
-                self.cleaned_data['username'], self.cleaned_data['email'],
-                self.cleaned_data['first_name'], self.cleaned_data['last_name'],
-                hashed_pwd,
-            ])
-            user_id = cursor.fetchone()[0]
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO auth_user
+                        (username, email, first_name, last_name, password,
+                         is_superuser, is_staff, is_active, date_joined)
+                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                    RETURNING id
+                """, [
+                    self.cleaned_data['username'], self.cleaned_data['email'],
+                    self.cleaned_data['first_name'], self.cleaned_data['last_name'],
+                    hashed_pwd,
+                ])
+                user_id = cursor.fetchone()[0]
 
-            cursor.execute("SELECT staff_id FROM auth_system_staff ORDER BY id DESC LIMIT 1")
-            last = cursor.fetchone()
-            if last:
-                try:
-                    next_num = int(last[0].replace('STF', '')) + 1
-                except (ValueError, AttributeError):
+                cursor.execute("SELECT staff_id FROM auth_system_staff ORDER BY id DESC LIMIT 1")
+                last = cursor.fetchone()
+                if last:
+                    try:
+                        next_num = int(last[0].replace('STF', '')) + 1
+                    except (ValueError, AttributeError):
+                        next_num = 1
+                else:
                     next_num = 1
-            else:
-                next_num = 1
-            staff_id = f"STF{next_num:06d}"
+                staff_id = f"STF{next_num:06d}"
 
-            cursor.execute("""
-                INSERT INTO auth_system_staff
-                    (user_id, staff_id, salutation, country_code, phone_number,
-                     birth_date, nationality, maskapai_id, department, is_active,
-                     created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
-            """, [
-                user_id, staff_id, self.cleaned_data['salutation'],
-                self.cleaned_data['country_code'], self.cleaned_data['phone_number'],
-                self.cleaned_data['birth_date'], self.cleaned_data['nationality'],
-                self.cleaned_data['maskapai'] or None, 'operations',
-            ])
-
+                cursor.execute("""
+                    INSERT INTO auth_system_staff
+                        (user_id, staff_id, salutation, country_code, phone_number,
+                         birth_date, nationality, maskapai_id, department, is_active,
+                         created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
+                """, [
+                    user_id, staff_id, self.cleaned_data['salutation'],
+                    self.cleaned_data['country_code'], self.cleaned_data['phone_number'],
+                    self.cleaned_data['birth_date'], self.cleaned_data['nationality'],
+                    self.cleaned_data['maskapai'] or None, 'operations',
+                ])
+        except DatabaseError as e:
+            raise forms.ValidationError(_extract_trigger_msg(e))
         return User.objects.get(pk=user_id)
 
     def clean_username(self):
@@ -673,14 +680,9 @@ class StaffRegistrationForm(UserCreationForm):
         return value
 
     def clean_email(self):
-        """Ensure email is unique for staff registration"""
         email = self.cleaned_data.get('email', '').strip()
         if not email:
             raise forms.ValidationError('Email harus diisi.')
-        
-        if _email_exists(email):
-            raise forms.ValidationError('Email ini sudah terdaftar. Gunakan email lain atau login dengan akun yang ada.')
-
         return email
 
     def clean_maskapai(self):
@@ -1112,10 +1114,7 @@ class StaffManageMemberCreateForm(forms.Form):
         return username
 
     def clean_email(self):
-        email = self.cleaned_data.get('email')
-        if _email_exists(email):
-            raise forms.ValidationError('Email sudah digunakan.')
-        return email
+        return self.cleaned_data.get('email')
 
     def clean_phone_number(self):
         return _sanitize_phone(self.cleaned_data.get('phone_number'))
@@ -1132,41 +1131,43 @@ class StaffManageMemberCreateForm(forms.Form):
         from django.contrib.auth.hashers import make_password
         from types import SimpleNamespace
         hashed_pwd = make_password(self.cleaned_data['password1'])
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO auth_user
-                    (username, email, first_name, last_name, password,
-                     is_superuser, is_staff, is_active, date_joined)
-                VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
-                RETURNING id
-            """, [
-                self.cleaned_data['username'], self.cleaned_data['email'],
-                self.cleaned_data['first_name'], self.cleaned_data['last_name'],
-                hashed_pwd,
-            ])
-            user_id = cursor.fetchone()[0]
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO auth_user
+                        (username, email, first_name, last_name, password,
+                         is_superuser, is_staff, is_active, date_joined)
+                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                    RETURNING id
+                """, [
+                    self.cleaned_data['username'], self.cleaned_data['email'],
+                    self.cleaned_data['first_name'], self.cleaned_data['last_name'],
+                    hashed_pwd,
+                ])
+                user_id = cursor.fetchone()[0]
 
-            cursor.execute("SELECT member_id FROM auth_system_member ORDER BY id DESC LIMIT 1")
-            last = cursor.fetchone()
-            if last:
-                try:
-                    next_num = int(last[0].replace('AMS', '')) + 1
-                except (ValueError, AttributeError):
+                cursor.execute("SELECT member_id FROM auth_system_member ORDER BY id DESC LIMIT 1")
+                last = cursor.fetchone()
+                if last:
+                    try:
+                        next_num = int(last[0].replace('AMS', '')) + 1
+                    except (ValueError, AttributeError):
+                        next_num = 1
+                else:
                     next_num = 1
-            else:
-                next_num = 1
-            member_id_val = f"AMS{next_num:06d}"
+                member_id_val = f"AMS{next_num:06d}"
 
-            cursor.execute("""
-                INSERT INTO auth_system_member
-                    (user_id, member_id, salutation, country_code, phone_number,
-                     nationality, total_miles, award_miles, is_active,
-                     created_at, updated_at)
-                VALUES (%s, %s, 'mr', '+62', %s, 'Indonesia', 0, 0, TRUE, NOW(), NOW())
-                RETURNING id
-            """, [user_id, member_id_val, self.cleaned_data['phone_number']])
-            member_pk = cursor.fetchone()[0]
-
+                cursor.execute("""
+                    INSERT INTO auth_system_member
+                        (user_id, member_id, salutation, country_code, phone_number,
+                         nationality, total_miles, award_miles, is_active,
+                         created_at, updated_at)
+                    VALUES (%s, %s, 'mr', '+62', %s, 'Indonesia', 0, 0, TRUE, NOW(), NOW())
+                    RETURNING id
+                """, [user_id, member_id_val, self.cleaned_data['phone_number']])
+                member_pk = cursor.fetchone()[0]
+        except DatabaseError as e:
+            raise forms.ValidationError(_extract_trigger_msg(e))
         user = User.objects.get(pk=user_id)
         member = SimpleNamespace(id=member_pk, member_id=member_id_val, user=user)
         return user, member

@@ -461,9 +461,12 @@ def add_member_view(request):
     if request.method == 'POST':
         form = StaffManageMemberCreateForm(request.POST)
         if form.is_valid():
-            _, member = form.save()
-            messages.success(request, f'Member {member.member_id} berhasil ditambahkan.')
-            return redirect('auth_system:manage_members_list')
+            try:
+                _, member = form.save()
+                messages.success(request, f'Member {member.member_id} berhasil ditambahkan.')
+                return redirect('auth_system:manage_members_list')
+            except forms.ValidationError as e:
+                form.add_error('email', e)
     else:
         form = StaffManageMemberCreateForm()
 
@@ -634,10 +637,13 @@ def register_member_view(request):
     if request.method == 'POST':
         form = MemberRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, 'Akun Member berhasil dibuat! Selamat datang!')
-            return redirect('auth_system:dashboard')
+            try:
+                user = form.save()
+                login(request, user)
+                messages.success(request, 'Akun Member berhasil dibuat! Selamat datang!')
+                return redirect('auth_system:dashboard')
+            except forms.ValidationError as e:
+                form.add_error('email', e)
         else:
             messages.error(request, 'Ada kesalahan dalam registrasi. Silakan cek lagi.')
     else:
@@ -655,10 +661,13 @@ def register_staff_view(request):
     if request.method == 'POST':
         form = StaffRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, 'Akun Staff berhasil dibuat! Selamat datang!')
-            return redirect('auth_system:dashboard')
+            try:
+                user = form.save()
+                login(request, user)
+                messages.success(request, 'Akun Staff berhasil dibuat! Selamat datang!')
+                return redirect('auth_system:dashboard')
+            except forms.ValidationError as e:
+                form.add_error('email', e)
         else:
             messages.error(request, 'Ada kesalahan dalam registrasi. Silakan cek lagi.')
     else:
