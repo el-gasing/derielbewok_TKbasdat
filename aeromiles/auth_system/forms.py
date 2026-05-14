@@ -192,12 +192,27 @@ class LoginForm(AuthenticationForm):
         fields = ('username', 'password')
 
     def clean_username(self):
-        username = self.cleaned_data.get('username', '').strip()
-        if '@' in username:
-            user = User.objects.filter(email__iexact=username).first()
-            if user:
+        """Convert email to username jika input menggunakan email"""
+        username_input = self.cleaned_data.get('username', '').strip()
+        
+        if not username_input:
+            raise forms.ValidationError('Username atau email harus diisi.')
+        
+        # Cek apakah input adalah email (ada @)
+        if '@' in username_input:
+            try:
+                user = User.objects.get(email__iexact=username_input)
                 return user.username
-        return username
+            except User.DoesNotExist:
+                raise forms.ValidationError('Email tidak terdaftar.')
+            except User.MultipleObjectsReturned:
+                # Fallback: cari yang paling baru
+                user = User.objects.filter(email__iexact=username_input).order_by('-last_login').first()
+                if user:
+                    return user.username
+                raise forms.ValidationError('Email tidak terdaftar.')
+        
+        return username_input
 
 
 class MemberRegistrationForm(UserCreationForm):
@@ -299,6 +314,19 @@ class MemberRegistrationForm(UserCreationForm):
         if value and value > date.today():
             raise forms.ValidationError('Tanggal lahir tidak valid.')
         return value
+
+    def clean_email(self):
+        """Ensure email is unique for member registration"""
+        email = self.cleaned_data.get('email', '').strip()
+        if not email:
+            raise forms.ValidationError('Email harus diisi.')
+        
+        # Check if email already exists
+        existing_user = User.objects.filter(email__iexact=email).first()
+        if existing_user:
+            raise forms.ValidationError('Email ini sudah terdaftar. Gunakan email lain atau login dengan akun yang ada.')
+        
+        return email
 
 
 class StaffMemberCreateForm(UserCreationForm):
@@ -547,6 +575,19 @@ class StaffRegistrationForm(UserCreationForm):
         if value and value > date.today():
             raise forms.ValidationError('Tanggal lahir tidak valid.')
         return value
+
+    def clean_email(self):
+        """Ensure email is unique for staff registration"""
+        email = self.cleaned_data.get('email', '').strip()
+        if not email:
+            raise forms.ValidationError('Email harus diisi.')
+        
+        # Check if email already exists
+        existing_user = User.objects.filter(email__iexact=email).first()
+        if existing_user:
+            raise forms.ValidationError('Email ini sudah terdaftar. Gunakan email lain atau login dengan akun yang ada.')
+        
+        return email
 
     def clean_maskapai(self):
         maskapai = self.cleaned_data.get('maskapai')
