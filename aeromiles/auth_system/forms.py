@@ -111,13 +111,33 @@ DEFAULT_MITRA = [
 ]
 
 
+def _email_exists(email, exclude_user_id=None):
+    sql = "SELECT 1 FROM auth_user WHERE LOWER(email) = LOWER(%s)"
+    params = [email]
+    if exclude_user_id is not None:
+        sql += " AND id <> %s"
+        params.append(exclude_user_id)
+    sql += " LIMIT 1"
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        return cursor.fetchone() is not None
+
+
+def _username_exists(username):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT 1 FROM auth_user WHERE username = %s LIMIT 1", [username]
+        )
+        return cursor.fetchone() is not None
+
+
 def _build_unique_username(email):
     base = (email or '').split('@')[0]
     base = re.sub(r'[^a-zA-Z0-9_.-]', '', base).lower() or 'user'
     username = base[:150]
     suffix = 1
 
-    while User.objects.filter(username=username).exists():
+    while _username_exists(username):
         extra = str(suffix)
         username = f"{base[:max(1, 150 - len(extra))]}{extra}"
         suffix += 1
@@ -125,50 +145,42 @@ def _build_unique_username(email):
     return username
 
 
-def _ensure_default_maskapai():
-    """Pastikan dropdown maskapai punya opsi dasar saat database masih kosong."""
-    if Maskapai.objects.exists():
-        return
+def _seed_default(table_name, items):
+    with connection.cursor() as cursor:
+        cursor.execute(f"SELECT 1 FROM {table_name} LIMIT 1")
+        if cursor.fetchone():
+            return
+        for item in items:
+            cursor.execute(
+                f"""INSERT INTO {table_name}
+                    (name, code, email, is_active, created_at, updated_at)
+                    VALUES (%s, %s, %s, TRUE, NOW(), NOW())""",
+                [item['name'], item['code'],
+                 f"{item['code'].lower()}@aeromiles.local"]
+            )
 
-    for item in DEFAULT_MASKAPAI:
-        Maskapai.objects.get_or_create(
-            code=item['code'],
-            defaults={
-                'name': item['name'],
-                'email': f"{item['code'].lower()}@aeromiles.local",
-                'is_active': True,
-            },
-        )
+
+def _ensure_default_maskapai():
+    _seed_default('auth_system_maskapai', DEFAULT_MASKAPAI)
 
 
 def _ensure_default_penyedia():
-    if Penyedia.objects.exists():
-        return
-
-    for item in DEFAULT_PENYEDIA:
-        Penyedia.objects.get_or_create(
-            code=item['code'],
-            defaults={
-                'name': item['name'],
-                'email': f"{item['code'].lower()}@aeromiles.local",
-                'is_active': True,
-            },
-        )
+    _seed_default('auth_system_penyedia', DEFAULT_PENYEDIA)
 
 
 def _ensure_default_mitra():
-    if Mitra.objects.exists():
-        return
-
-    for item in DEFAULT_MITRA:
-        Mitra.objects.get_or_create(
-            code=item['code'],
-            defaults={
-                'name': item['name'],
-                'email': f"{item['code'].lower()}@aeromiles.local",
-                'is_active': True,
-            },
-        )
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT 1 FROM auth_system_mitra LIMIT 1")
+        if cursor.fetchone():
+            return
+        for item in DEFAULT_MITRA:
+            cursor.execute(
+                """INSERT INTO auth_system_mitra
+                    (name, code, email, is_active, tanggal_kerja_sama, created_at, updated_at)
+                    VALUES (%s, %s, %s, TRUE, NULL, NOW(), NOW())""",
+                [item['name'], item['code'],
+                 f"{item['code'].lower()}@aeromiles.local"]
+            )
 
 
 class LoginForm(AuthenticationForm):
@@ -199,20 +211,19 @@ class LoginForm(AuthenticationForm):
         if not username_input:
             raise forms.ValidationError('Username atau email harus diisi.')
         
-        # Cek apakah input adalah email (ada @)
         if '@' in username_input:
-            try:
-                user = User.objects.get(email__iexact=username_input)
-                return user.username
-            except User.DoesNotExist:
-                raise forms.ValidationError('Email tidak terdaftar.')
-            except User.MultipleObjectsReturned:
-                # Fallback: cari yang paling baru
-                user = User.objects.filter(email__iexact=username_input).order_by('-last_login').first()
-                if user:
-                    return user.username
-                raise forms.ValidationError('Email tidak terdaftar.')
-        
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """SELECT username FROM auth_user
+                       WHERE LOWER(email) = LOWER(%s)
+                       ORDER BY last_login DESC LIMIT 1""",
+                    [username_input]
+                )
+                row = cursor.fetchone()
+            if row:
+                return row[0]
+            raise forms.ValidationError('Email tidak terdaftar.')
+
         return username_input
 
 
@@ -277,26 +288,53 @@ class MemberRegistrationForm(UserCreationForm):
         self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Konfirmasi Password'})
 
     def save(self, commit=True):
-        user = super().save(commit=False)
-        user.username = self.cleaned_data['username']
-        user.email = self.cleaned_data['email']
-        user.first_name = self.cleaned_data['first_name']
-        user.last_name = self.cleaned_data['last_name']
+        from django.contrib.auth.hashers import make_password
+        if not commit:
+            user = super().save(commit=False)
+            user.username = self.cleaned_data['username']
+            user.email = self.cleaned_data['email']
+            user.first_name = self.cleaned_data['first_name']
+            user.last_name = self.cleaned_data['last_name']
+            return user
 
-        if commit:
-            user.save()
-            # Create associated Member profile with auto-generated member_id
-            Member.objects.create(
-                user=user,
-                member_id=Member.generate_member_id(),
-                salutation=self.cleaned_data['salutation'],
-                country_code=self.cleaned_data['country_code'],
-                phone_number=self.cleaned_data['phone_number'],
-                birth_date=self.cleaned_data['birth_date'],
-                nationality=self.cleaned_data['nationality']
-            )
+        hashed_pwd = make_password(self.cleaned_data['password1'])
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO auth_user
+                    (username, email, first_name, last_name, password,
+                     is_superuser, is_staff, is_active, date_joined)
+                VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                RETURNING id
+            """, [
+                self.cleaned_data['username'], self.cleaned_data['email'],
+                self.cleaned_data['first_name'], self.cleaned_data['last_name'],
+                hashed_pwd,
+            ])
+            user_id = cursor.fetchone()[0]
 
-        return user
+            cursor.execute("SELECT member_id FROM auth_system_member ORDER BY id DESC LIMIT 1")
+            last = cursor.fetchone()
+            if last:
+                try:
+                    next_num = int(last[0].replace('AMS', '')) + 1
+                except (ValueError, AttributeError):
+                    next_num = 1
+            else:
+                next_num = 1
+            member_id_val = f"AMS{next_num:06d}"
+
+            cursor.execute("""
+                INSERT INTO auth_system_member
+                    (user_id, member_id, salutation, country_code, phone_number,
+                     birth_date, nationality, total_miles, award_miles, is_active,
+                     created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 0, 0, TRUE, NOW(), NOW())
+            """, [
+                user_id, member_id_val, self.cleaned_data['salutation'],
+                self.cleaned_data['country_code'], self.cleaned_data['phone_number'],
+                self.cleaned_data['birth_date'], self.cleaned_data['nationality'],
+            ])
+        return User.objects.get(pk=user_id)
 
     def clean_username(self):
         return _build_unique_username(self.cleaned_data.get('email', ''))
@@ -322,11 +360,9 @@ class MemberRegistrationForm(UserCreationForm):
         if not email:
             raise forms.ValidationError('Email harus diisi.')
         
-        # Check if email already exists
-        existing_user = User.objects.filter(email__iexact=email).first()
-        if existing_user:
+        if _email_exists(email):
             raise forms.ValidationError('Email ini sudah terdaftar. Gunakan email lain atau login dengan akun yang ada.')
-        
+
         return email
 
 
@@ -374,23 +410,52 @@ class StaffMemberCreateForm(UserCreationForm):
         self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Konfirmasi Password'})
 
     def save(self, commit=True):
-        user = super().save(commit=False)
-        user.email = self.cleaned_data['email']
-        user.first_name = self.cleaned_data['first_name']
-        user.last_name = self.cleaned_data['last_name']
-        if commit:
-            user.save()
-            Member.objects.create(
-                user=user,
-                member_id=Member.generate_member_id(),
-                country_code='+62',
-                phone_number=self.cleaned_data.get('phone_number', ''),
-            )
-        return user
+        from django.contrib.auth.hashers import make_password
+        if not commit:
+            user = super().save(commit=False)
+            user.email = self.cleaned_data['email']
+            user.first_name = self.cleaned_data['first_name']
+            user.last_name = self.cleaned_data['last_name']
+            return user
+
+        hashed_pwd = make_password(self.cleaned_data['password1'])
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO auth_user
+                    (username, email, first_name, last_name, password,
+                     is_superuser, is_staff, is_active, date_joined)
+                VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                RETURNING id
+            """, [
+                self.cleaned_data['username'], self.cleaned_data['email'],
+                self.cleaned_data['first_name'], self.cleaned_data['last_name'],
+                hashed_pwd,
+            ])
+            user_id = cursor.fetchone()[0]
+
+            cursor.execute("SELECT member_id FROM auth_system_member ORDER BY id DESC LIMIT 1")
+            last = cursor.fetchone()
+            if last:
+                try:
+                    next_num = int(last[0].replace('AMS', '')) + 1
+                except (ValueError, AttributeError):
+                    next_num = 1
+            else:
+                next_num = 1
+            member_id_val = f"AMS{next_num:06d}"
+
+            cursor.execute("""
+                INSERT INTO auth_system_member
+                    (user_id, member_id, salutation, country_code, phone_number,
+                     nationality, total_miles, award_miles, is_active,
+                     created_at, updated_at)
+                VALUES (%s, %s, 'mr', '+62', %s, 'Indonesia', 0, 0, TRUE, NOW(), NOW())
+            """, [user_id, member_id_val, self.cleaned_data.get('phone_number', '')])
+        return User.objects.get(pk=user_id)
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        if User.objects.filter(email__iexact=email).exists():
+        if _email_exists(email):
             raise forms.ValidationError('Email sudah digunakan.')
         return email
 
@@ -442,7 +507,7 @@ class StaffMemberUpdateForm(forms.Form):
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        if User.objects.filter(email__iexact=email).exclude(pk=self.member.user.pk).exists():
+        if _email_exists(email, exclude_user_id=self.member.user.pk):
             raise forms.ValidationError('Email sudah digunakan.')
         return email
 
@@ -516,9 +581,8 @@ class StaffRegistrationForm(UserCreationForm):
         choices=[('', 'Pilih negara')] + NATIONALITY_CHOICES,
         widget=forms.Select(attrs={'class': 'form-select'})
     )
-    maskapai = forms.ModelChoiceField(
-        queryset=Maskapai.objects.none(),
-        empty_label='Pilih maskapai',
+    maskapai = forms.ChoiceField(
+        choices=[],
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
@@ -531,32 +595,65 @@ class StaffRegistrationForm(UserCreationForm):
         _ensure_default_maskapai()
         self.fields['password1'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Password'})
         self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Konfirmasi Password'})
-        self.fields['maskapai'].queryset = Maskapai.objects.filter(is_active=True).order_by('name')
-        self.fields['maskapai'].label_from_instance = lambda obj: f"{obj.code} - {obj.name}"
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, code, name FROM auth_system_maskapai WHERE is_active = TRUE ORDER BY name"
+            )
+            mks = cursor.fetchall()
+        self.fields['maskapai'].choices = [('', 'Pilih maskapai')] + [
+            (str(r[0]), f"{r[1]} - {r[2]}") for r in mks
+        ]
 
     def save(self, commit=True):
-        user = super().save(commit=False)
-        user.username = self.cleaned_data['username']
-        user.email = self.cleaned_data['email']
-        user.first_name = self.cleaned_data['first_name']
-        user.last_name = self.cleaned_data['last_name']
+        from django.contrib.auth.hashers import make_password
+        if not commit:
+            user = super().save(commit=False)
+            user.username = self.cleaned_data['username']
+            user.email = self.cleaned_data['email']
+            user.first_name = self.cleaned_data['first_name']
+            user.last_name = self.cleaned_data['last_name']
+            return user
 
-        if commit:
-            user.save()
-            # Create associated Staff profile with auto-generated staff_id
-            Staff.objects.create(
-                user=user,
-                staff_id=Staff.generate_staff_id(),
-                salutation=self.cleaned_data['salutation'],
-                country_code=self.cleaned_data['country_code'],
-                phone_number=self.cleaned_data['phone_number'],
-                birth_date=self.cleaned_data['birth_date'],
-                nationality=self.cleaned_data['nationality'],
-                maskapai=self.cleaned_data['maskapai'],
-                department='operations'
-            )
+        hashed_pwd = make_password(self.cleaned_data['password1'])
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO auth_user
+                    (username, email, first_name, last_name, password,
+                     is_superuser, is_staff, is_active, date_joined)
+                VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                RETURNING id
+            """, [
+                self.cleaned_data['username'], self.cleaned_data['email'],
+                self.cleaned_data['first_name'], self.cleaned_data['last_name'],
+                hashed_pwd,
+            ])
+            user_id = cursor.fetchone()[0]
 
-        return user
+            cursor.execute("SELECT staff_id FROM auth_system_staff ORDER BY id DESC LIMIT 1")
+            last = cursor.fetchone()
+            if last:
+                try:
+                    next_num = int(last[0].replace('STF', '')) + 1
+                except (ValueError, AttributeError):
+                    next_num = 1
+            else:
+                next_num = 1
+            staff_id = f"STF{next_num:06d}"
+
+            cursor.execute("""
+                INSERT INTO auth_system_staff
+                    (user_id, staff_id, salutation, country_code, phone_number,
+                     birth_date, nationality, maskapai_id, department, is_active,
+                     created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
+            """, [
+                user_id, staff_id, self.cleaned_data['salutation'],
+                self.cleaned_data['country_code'], self.cleaned_data['phone_number'],
+                self.cleaned_data['birth_date'], self.cleaned_data['nationality'],
+                self.cleaned_data['maskapai'] or None, 'operations',
+            ])
+
+        return User.objects.get(pk=user_id)
 
     def clean_username(self):
         return _build_unique_username(self.cleaned_data.get('email', ''))
@@ -582,11 +679,9 @@ class StaffRegistrationForm(UserCreationForm):
         if not email:
             raise forms.ValidationError('Email harus diisi.')
         
-        # Check if email already exists
-        existing_user = User.objects.filter(email__iexact=email).first()
-        if existing_user:
+        if _email_exists(email):
             raise forms.ValidationError('Email ini sudah terdaftar. Gunakan email lain atau login dengan akun yang ada.')
-        
+
         return email
 
     def clean_maskapai(self):
@@ -721,10 +816,9 @@ class StaffProfileSettingsForm(BaseProfileSettingsForm):
         disabled=True,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
-    maskapai = forms.ModelChoiceField(
+    maskapai = forms.ChoiceField(
         label='Kode Maskapai',
-        queryset=Maskapai.objects.none(),
-        empty_label='Pilih maskapai',
+        choices=[],
         widget=forms.Select(attrs={'class': 'form-select'})
     )
     salutation_choices = Staff.SALUTATION_CHOICES
@@ -733,12 +827,17 @@ class StaffProfileSettingsForm(BaseProfileSettingsForm):
         super().__init__(*args, user=user, profile=profile, **kwargs)
         _ensure_default_maskapai()
         self.fields['staff_id'].initial = profile.staff_id
-        maskapai_filter = Q(is_active=True)
-        if profile.maskapai_id:
-            maskapai_filter |= Q(pk=profile.maskapai_id)
-        self.fields['maskapai'].queryset = Maskapai.objects.filter(maskapai_filter).order_by('name')
-        self.fields['maskapai'].label_from_instance = lambda obj: f"{obj.code} - {obj.name}"
-        self.fields['maskapai'].initial = profile.maskapai
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """SELECT id, code, name FROM auth_system_maskapai
+                   WHERE is_active = TRUE OR id = %s ORDER BY name""",
+                [profile.maskapai_id or 0]
+            )
+            mks = cursor.fetchall()
+        self.fields['maskapai'].choices = [('', 'Pilih maskapai')] + [
+            (str(r[0]), f"{r[1]} - {r[2]}") for r in mks
+        ]
+        self.fields['maskapai'].initial = str(profile.maskapai_id) if profile.maskapai_id else ''
         self.order_fields([
             'email', 'staff_id', 'salutation',
             'first_name', 'last_name', 'nationality',
@@ -746,18 +845,38 @@ class StaffProfileSettingsForm(BaseProfileSettingsForm):
         ])
 
     def clean_maskapai(self):
-        maskapai = self.cleaned_data.get('maskapai')
-        if not maskapai:
+        maskapai_id = self.cleaned_data.get('maskapai')
+        if not maskapai_id:
             raise forms.ValidationError('Maskapai wajib dipilih.')
-        if not maskapai.is_active:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT is_active FROM auth_system_maskapai WHERE id = %s",
+                [maskapai_id]
+            )
+            row = cursor.fetchone()
+        if not row:
+            raise forms.ValidationError('Maskapai tidak ditemukan.')
+        if not row[0]:
             raise forms.ValidationError('Maskapai tidak aktif.')
-        return maskapai
+        return maskapai_id
 
     def _save_profile(self):
-        self.profile.maskapai = self.cleaned_data['maskapai']
-        self.profile.save(update_fields=[
-            'salutation', 'country_code', 'phone_number', 'nationality', 'birth_date', 'maskapai', 'updated_at'
-        ])
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """UPDATE auth_system_staff
+                   SET salutation=%s, country_code=%s, phone_number=%s,
+                       nationality=%s, birth_date=%s, maskapai_id=%s, updated_at=NOW()
+                   WHERE id=%s""",
+                [
+                    self.cleaned_data['salutation'],
+                    self.cleaned_data['country_code'],
+                    self.cleaned_data['phone_number'],
+                    self.cleaned_data['nationality'],
+                    self.cleaned_data['birth_date'],
+                    self.cleaned_data['maskapai'],
+                    self.profile.id,
+                ]
+            )
 
 
 class StyledPasswordChangeForm(PasswordChangeForm):
@@ -778,22 +897,19 @@ class StyledPasswordChangeForm(PasswordChangeForm):
 class ClaimMissingMilesForm(forms.Form):
     """Form untuk member membuat dan mengubah claim missing miles."""
 
-    maskapai = forms.ModelChoiceField(
-        queryset=Maskapai.objects.none(),
-        empty_label='Pilih maskapai',
+    maskapai = forms.ChoiceField(
+        choices=[],
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
-    bandara_asal = forms.ModelChoiceField(
-        queryset=Bandara.objects.none(),
+    bandara_asal = forms.ChoiceField(
+        choices=[],
         label='Bandara Asal',
-        empty_label='Pilih bandara asal',
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
-    bandara_tujuan = forms.ModelChoiceField(
-        queryset=Bandara.objects.none(),
+    bandara_tujuan = forms.ChoiceField(
+        choices=[],
         label='Bandara Tujuan',
-        empty_label='Pilih bandara tujuan',
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
@@ -833,12 +949,21 @@ class ClaimMissingMilesForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['maskapai'].queryset = Maskapai.objects.filter(is_active=True).order_by('name')
-        self.fields['maskapai'].label_from_instance = lambda obj: f"{obj.code} - {obj.name}"
-        self.fields['bandara_asal'].queryset = Bandara.objects.all().order_by('iata_code')
-        self.fields['bandara_asal'].label_from_instance = lambda obj: f"{obj.iata_code} - {obj.nama}"
-        self.fields['bandara_tujuan'].queryset = Bandara.objects.all().order_by('iata_code')
-        self.fields['bandara_tujuan'].label_from_instance = lambda obj: f"{obj.iata_code} - {obj.nama}"
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, code, name FROM auth_system_maskapai WHERE is_active = TRUE ORDER BY name"
+            )
+            mks = cursor.fetchall()
+            cursor.execute(
+                "SELECT iata_code, nama FROM auth_system_bandara ORDER BY iata_code"
+            )
+            bds = cursor.fetchall()
+        self.fields['maskapai'].choices = [('', 'Pilih maskapai')] + [
+            (str(r[0]), f"{r[1]} - {r[2]}") for r in mks
+        ]
+        bandara_choices = [('', 'Pilih bandara')] + [(r[0], f"{r[0]} - {r[1]}") for r in bds]
+        self.fields['bandara_asal'].choices = bandara_choices
+        self.fields['bandara_tujuan'].choices = bandara_choices
 
     def clean_flight_number(self):
         flight_number = _sanitize_text(self.cleaned_data.get('flight_number'), max_length=20).upper()
@@ -922,13 +1047,22 @@ class TransferMilesForm(forms.Form):
         self.to_member = None
 
     def clean_email_penerima(self):
+        from types import SimpleNamespace
         email = self.cleaned_data['email_penerima'].strip().lower()
-        try:
-            user = User.objects.get(email__iexact=email)
-            self.to_member = Member.objects.get(user=user, is_active=True)
-        except (User.DoesNotExist, Member.DoesNotExist) as exc:
-            raise forms.ValidationError('Email tidak ditemukan atau member tidak aktif.') from exc
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT m.id, m.user_id, m.member_id, m.award_miles
+                FROM auth_system_member m
+                JOIN auth_user u ON u.id = m.user_id
+                WHERE LOWER(u.email) = LOWER(%s) AND m.is_active = TRUE
+            """, [email])
+            row = cursor.fetchone()
+        if row is None:
+            raise forms.ValidationError('Email tidak ditemukan atau member tidak aktif.')
 
+        self.to_member = SimpleNamespace(
+            id=row[0], user_id=row[1], member_id=row[2], award_miles=row[3],
+        )
         if self.to_member.id == self.from_member.id:
             raise forms.ValidationError('Tidak bisa transfer ke akun sendiri.')
 
@@ -974,13 +1108,13 @@ class StaffManageMemberCreateForm(forms.Form):
 
     def clean_username(self):
         username = _sanitize_text(self.cleaned_data.get('username'), max_length=150)
-        if User.objects.filter(username=username).exists():
+        if _username_exists(username):
             raise forms.ValidationError('Username sudah digunakan.')
         return username
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        if User.objects.filter(email__iexact=email).exists():
+        if _email_exists(email):
             raise forms.ValidationError('Email sudah digunakan.')
         return email
 
@@ -996,18 +1130,46 @@ class StaffManageMemberCreateForm(forms.Form):
         return cleaned
 
     def save(self):
-        user = User.objects.create_user(
-            username=self.cleaned_data['username'],
-            email=self.cleaned_data['email'],
-            password=self.cleaned_data['password1'],
-            first_name=self.cleaned_data['first_name'],
-            last_name=self.cleaned_data['last_name'],
-        )
-        member = Member.objects.create(
-            user=user,
-            member_id=Member.generate_member_id(),
-            phone_number=self.cleaned_data['phone_number'],
-        )
+        from django.contrib.auth.hashers import make_password
+        from types import SimpleNamespace
+        hashed_pwd = make_password(self.cleaned_data['password1'])
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO auth_user
+                    (username, email, first_name, last_name, password,
+                     is_superuser, is_staff, is_active, date_joined)
+                VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                RETURNING id
+            """, [
+                self.cleaned_data['username'], self.cleaned_data['email'],
+                self.cleaned_data['first_name'], self.cleaned_data['last_name'],
+                hashed_pwd,
+            ])
+            user_id = cursor.fetchone()[0]
+
+            cursor.execute("SELECT member_id FROM auth_system_member ORDER BY id DESC LIMIT 1")
+            last = cursor.fetchone()
+            if last:
+                try:
+                    next_num = int(last[0].replace('AMS', '')) + 1
+                except (ValueError, AttributeError):
+                    next_num = 1
+            else:
+                next_num = 1
+            member_id_val = f"AMS{next_num:06d}"
+
+            cursor.execute("""
+                INSERT INTO auth_system_member
+                    (user_id, member_id, salutation, country_code, phone_number,
+                     nationality, total_miles, award_miles, is_active,
+                     created_at, updated_at)
+                VALUES (%s, %s, 'mr', '+62', %s, 'Indonesia', 0, 0, TRUE, NOW(), NOW())
+                RETURNING id
+            """, [user_id, member_id_val, self.cleaned_data['phone_number']])
+            member_pk = cursor.fetchone()[0]
+
+        user = User.objects.get(pk=user_id)
+        member = SimpleNamespace(id=member_pk, member_id=member_id_val, user=user)
         return user, member
 
 
@@ -1297,11 +1459,16 @@ class MitraForm(forms.Form):
 
     def clean_code(self):
         code = _sanitize_text(self.cleaned_data.get('code'), max_length=10).upper()
-        qs = Mitra.objects.filter(code__iexact=code)
+        sql = "SELECT 1 FROM auth_system_mitra WHERE LOWER(code) = LOWER(%s)"
+        params = [code]
         if self.mitra:
-            qs = qs.exclude(pk=self.mitra.pk)
-        if qs.exists():
-            raise forms.ValidationError('Kode mitra sudah digunakan.')
+            sql += " AND id <> %s"
+            params.append(self.mitra.id)
+        sql += " LIMIT 1"
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            if cursor.fetchone():
+                raise forms.ValidationError('Kode mitra sudah digunakan.')
         return code
 
     def clean_phone_number(self):

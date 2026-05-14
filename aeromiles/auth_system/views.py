@@ -728,9 +728,9 @@ def member_claim_create_view(request):
                             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NULL,'pending',%s,%s,NOW(),NOW())
                         """, [
                             member.id, claim_id,
-                            maskapai.id if maskapai else None,
-                            bandara_asal.iata_code if bandara_asal else None,
-                            bandara_tujuan.iata_code if bandara_tujuan else None,
+                            maskapai or None,
+                            bandara_asal or None,
+                            bandara_tujuan or None,
                             cd.get('kelas_kabin') or None,
                             cd.get('pnr') or None,
                             flight_number, ticket_number or None, flight_date,
@@ -809,9 +809,9 @@ def member_claim_update_view(request, claim_id):
                                 flight_date=%s, reason=%s, description=%s, updated_at=NOW()
                             WHERE id=%s
                         """, [
-                            maskapai.id if maskapai else None,
-                            bandara_asal.iata_code if bandara_asal else None,
-                            bandara_tujuan.iata_code if bandara_tujuan else None,
+                            maskapai or None,
+                            bandara_asal or None,
+                            bandara_tujuan or None,
                             cd.get('kelas_kabin') or None,
                             cd.get('pnr') or None,
                             flight_number, ticket_number or None, flight_date,
