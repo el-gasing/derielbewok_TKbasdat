@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from django import forms
 from django.db import DatabaseError, connection, transaction
 from django.http import Http404
 from django.core.paginator import Paginator
