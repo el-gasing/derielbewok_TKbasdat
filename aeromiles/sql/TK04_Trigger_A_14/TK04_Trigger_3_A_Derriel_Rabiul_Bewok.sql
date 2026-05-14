@@ -44,3 +44,8 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER TR_VALIDATE_REDEEM_HADIAH
+BEFORE INSERT ON auth_system_redeem
+FOR EACH ROW
+EXECUTE FUNCTION fn_validate_and_update_redeem();
