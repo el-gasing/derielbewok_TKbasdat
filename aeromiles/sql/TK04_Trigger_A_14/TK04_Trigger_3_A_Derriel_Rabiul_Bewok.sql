@@ -1,3 +1,4 @@
+-- Create Function 1. Validasi dan Update Saldo Award Miles saat Redeem Hadiah 
 DROP TRIGGER IF EXISTS TR_VALIDATE_REDEEM_HADIAH ON auth_system_redeem;
 DROP FUNCTION IF EXISTS fn_validate_and_update_redeem();
 
@@ -45,13 +46,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Create Trigger 1. Validasi dan Update Saldo Award Miles saat Redeem Hadiah 
 CREATE TRIGGER TR_VALIDATE_REDEEM_HADIAH
 BEFORE INSERT ON auth_system_redeem
 FOR EACH ROW
 EXECUTE FUNCTION fn_validate_and_update_redeem();
 
+-- Create Function 2. Sinkronisasi Award Miles setelah Transaksi Pembelian Package
 DROP TRIGGER IF EXISTS TR_SYNC_PEMBELIAN_PACKAGE ON auth_system_memberawardmilespackage;
 DROP FUNCTION IF EXISTS fn_sync_miles_pembelian_package();
+
 CREATE OR REPLACE FUNCTION fn_sync_miles_pembelian_package()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -71,3 +75,9 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Create Trigger 2. Sinkronisasi Award Miles setelah Transaksi Pembelian Package
+CREATE TRIGGER TR_SYNC_PEMBELIAN_PACKAGE
+AFTER INSERT ON auth_system_memberawardmilespackage
+FOR EACH ROW
+EXECUTE FUNCTION fn_sync_miles_pembelian_package();
