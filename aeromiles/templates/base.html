@@ -228,25 +228,12 @@
             >Pengaturan Profil</a
           >
           {% endif %}
-          <form
-            method="post"
-            action="{% url 'auth_system:logout' %}"
-            style="display: inline; margin: 0"
+          <a
+            href="{% url 'auth_system:logout' %}"
+            class="nav-link"
+            style="display: inline-flex; align-items: center;"
+            >Logout</a
           >
-            {% csrf_token %}
-            <button
-              type="submit"
-              class="nav-link"
-              style="
-                background: none;
-                border: none;
-                padding: 8px 14px;
-                cursor: pointer;
-              "
-            >
-              Logout
-            </button>
-          </form>
           {% else %}
           <a
             href="{% url 'auth_system:login' %}"

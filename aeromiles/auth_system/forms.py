@@ -507,7 +507,8 @@ class StaffRegistrationForm(UserCreationForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.username = self.cleaned_data['username']
+        username = self.cleaned_data.get('username') or _build_unique_username(self.cleaned_data.get('email', ''))
+        user.username = username
         user.email = self.cleaned_data['email']
         user.first_name = self.cleaned_data['first_name']
         user.last_name = self.cleaned_data['last_name']

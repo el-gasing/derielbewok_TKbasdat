@@ -343,11 +343,33 @@ def register_staff_view(request):
     if request.method == 'POST':
         form = StaffRegistrationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            messages.success(request, 'Akun Staff berhasil dibuat! Selamat datang!')
-            return redirect('auth_system:dashboard')
+            try:
+                user = form.save()
+                # Verify user was actually saved to database
+                from django.contrib.auth.models import User as UserModel
+                saved_user = UserModel.objects.filter(id=user.id).first()
+                if not saved_user:
+                    raise ValueError(f"User with ID {user.id} not found in database after save!")
+                
+                # Verify Staff profile was created
+                staff = Staff.objects.filter(user=user).first()
+                if not staff:
+                    raise ValueError(f"Staff profile not created for user {user.id}")
+                
+                # Attempt login
+                login(request, user)
+                messages.success(request, 'Akun Staff berhasil dibuat! Selamat datang!')
+                return redirect('auth_system:dashboard')
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"[STAFF_REG_ERROR] Exception during registration: {type(e).__name__}: {e}")
+                messages.error(request, f'Kesalahan saat membuat akun: {str(e)}')
         else:
+            # Log validation errors
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"[STAFF_REG_VALIDATION] Form validation failed: {form.errors}")
             messages.error(request, 'Ada kesalahan dalam registrasi. Silakan cek lagi.')
     else:
         form = StaffRegistrationForm()
@@ -500,6 +522,7 @@ def staff_claim_update_view(request, claim_id):
         return redirect('auth_system:dashboard')
 
     claim = get_object_or_404(ClaimMissingMiles, id=claim_id)
+    old_status = claim.status
     if request.method == 'POST':
         form = StaffClaimUpdateForm(request.POST, instance=claim)
         if form.is_valid():
