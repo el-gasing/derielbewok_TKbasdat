@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - AeroMiles{% endblock %}
+
+{% block extra_css %}
+<style>
+  .mitra-form-page { max-width: 680px; margin: 0 auto; padding: 16px 0; }
+  .mitra-form-card { background: #fff; border: 1px solid #dde5ef; border-radius: 18px; box-shadow: 0 18px 38px rgba(15,23,42,.08); overflow: hidden; }
+  .mitra-form-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px 10px; }
+  .mitra-form-head h1 { margin: 0; font-size: 26px; font-weight: 800; color: #182536; }
+  .mitra-form-body { padding: 0 22px 22px; }
+  .mitra-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .mitra-field { display: flex; flex-direction: column; gap: 7px; }
+  .mitra-field.full { grid-column: 1 / -1; }
+  .mitra-field label { font-size: 13px; font-weight: 800; color: #26384f; }
+  .mitra-field .form-control, .mitra-field .form-select { min-height: 44px; border: 1px solid #d9e2ec; border-radius: 11px; font-size: 14px; }
+  .mitra-field .errorlist { list-style: none; padding: 0; margin: 4px 0 0; color: #bf1e2e; font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mitra-form-page">
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="alert alert-{{ msg.tags|default:'info' }} mb-3">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="mitra-form-card">
+    <div class="mitra-form-head">
+      <h1>{{ title }}</h1>
+      <a href="{% url 'auth_system:staff_partners' %}" class="btn btn-sm btn-outline-secondary">&larr; Kembali</a>
+    </div>
+    <div class="mitra-form-body">
+      <form method="post">
+        {% csrf_token %}
+        <div class="mitra-grid">
+          <div class="mitra-field">
+            <label for="{{ form.name.id_for_label }}">Nama Mitra</label>
+            {{ form.name }}
+            {% if form.name.errors %}<ul class="errorlist">{% for e in form.name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          <div class="mitra-field">
+            <label for="{{ form.code.id_for_label }}">Kode</label>
+            {{ form.code }}
+            {% if form.code.errors %}<ul class="errorlist">{% for e in form.code.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          <div class="mitra-field full">
+            <label for="{{ form.email.id_for_label }}">Email</label>
+            {{ form.email }}
+            {% if form.email.errors %}<ul class="errorlist">{% for e in form.email.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          <div class="mitra-field">
+            <label for="{{ form.contact_person.id_for_label }}">Contact Person</label>
+            {{ form.contact_person }}
+            {% if form.contact_person.errors %}<ul class="errorlist">{% for e in form.contact_person.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          <div class="mitra-field">
+            <label for="{{ form.phone_number.id_for_label }}">Telepon</label>
+            {{ form.phone_number }}
+            {% if form.phone_number.errors %}<ul class="errorlist">{% for e in form.phone_number.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          <div class="mitra-field full d-flex align-items-center gap-2 pt-2">
+            {{ form.is_active }}
+            <label for="{{ form.is_active.id_for_label }}" class="mb-0">Mitra aktif</label>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <a href="{% url 'auth_system:staff_partners' %}" class="btn btn-outline-secondary">Batal</a>
+          <button type="submit" class="btn btn-primary px-4 fw-bold">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

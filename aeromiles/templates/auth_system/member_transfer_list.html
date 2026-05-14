@@ -153,16 +153,16 @@
                     {% for transfer in transfers %}
                         <tr>
                             <td>{{ transfer.transfer_id }}</td>
-                            <td>{{ transfer.from_member.member_id }}</td>
-                            <td>{{ transfer.to_member.member_id }}</td>
+                            <td>{{ transfer.from_member_id }}</td>
+                            <td>{{ transfer.to_member_id }}</td>
                             <td>{{ transfer.miles_amount }}</td>
                             <td>
                                 {% if transfer.status == 'pending' %}
-                                    <span class="badge-status badge-pending">{{ transfer.get_status_display }}</span>
+                                    <span class="badge-status badge-pending">Pending</span>
                                 {% elif transfer.status == 'completed' %}
-                                    <span class="badge-status badge-completed">{{ transfer.get_status_display }}</span>
+                                    <span class="badge-status badge-completed">Selesai</span>
                                 {% else %}
-                                    <span class="badge-status badge-cancelled">{{ transfer.get_status_display }}</span>
+                                    <span class="badge-status badge-cancelled">Dibatalkan</span>
                                 {% endif %}
                             </td>
                             <td>{{ transfer.created_at|date:'Y-m-d H:i' }}</td>

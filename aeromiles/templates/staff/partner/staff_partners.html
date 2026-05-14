@@ -110,9 +110,11 @@
             <div>
                 <div class="hero-kicker" style="text-transform:uppercase; letter-spacing:.18em; font-size:11px; opacity:.75; margin-bottom:8px;">Staff Tools</div>
                 <h1 class="mb-2" style="font-size:30px; font-weight:800;">Kelola Mitra</h1>
-                <p class="mb-0" style="max-width:68ch; color:rgba(255,255,255,.84);">Daftar mitra yang tersimpan di sistem untuk navigasi cepat dari navbar staff.</p>
+                <p class="mb-0" style="max-width:68ch; color:rgba(255,255,255,.84);">Daftar mitra yang tersimpan di sistem.</p>
             </div>
-            <div class="status-pill status-active">{{ partners|length }} data</div>
+            <a href="{% url 'auth_system:staff_mitra_create' %}" class="btn btn-light btn-sm fw-bold">
+                <i class="fa fa-plus me-1"></i> Tambah Mitra
+            </a>
         </div>
     </section>
 
@@ -132,6 +134,13 @@
                     <li><span class="partner-label">Telepon</span><span>{{ partner.phone_number|default:'-' }}</span></li>
                     <li><span class="partner-label">Dibuat</span><span>{{ partner.created_at|date:'d M Y' }}</span></li>
                 </ul>
+                <div class="d-flex gap-2 mt-3">
+                    <a href="{% url 'auth_system:staff_mitra_edit' partner.id %}" class="btn btn-sm btn-outline-primary flex-fill">Edit</a>
+                    <form method="post" action="{% url 'auth_system:staff_mitra_delete' partner.id %}" onsubmit="return confirm('Hapus mitra {{ partner.name }}?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
+                    </form>
+                </div>
             </article>
         {% empty %}
             <div class="partner-card" style="grid-column: 1 / -1; text-align:center; color: var(--muted);">

@@ -70,9 +70,15 @@
     <div class="detail-grid">
         <div class="detail-card">
             <dl class="row detail-dl mb-0">
+                <dt class="col-sm-4">Maskapai</dt><dd class="col-sm-8">{% if claim.maskapai %}{{ claim.maskapai.code }} – {{ claim.maskapai.name }}{% else %}-{% endif %}</dd>
+                <dt class="col-sm-4">Bandara Asal</dt><dd class="col-sm-8">{% if claim.bandara_asal %}{{ claim.bandara_asal.iata_code }} – {{ claim.bandara_asal.nama }}{% else %}-{% endif %}</dd>
+                <dt class="col-sm-4">Bandara Tujuan</dt><dd class="col-sm-8">{% if claim.bandara_tujuan %}{{ claim.bandara_tujuan.iata_code }} – {{ claim.bandara_tujuan.nama }}{% else %}-{% endif %}</dd>
+                <dt class="col-sm-4">Kelas Kabin</dt><dd class="col-sm-8">{{ claim.get_kelas_kabin_display|default:'-' }}</dd>
+                <dt class="col-sm-4">PNR</dt><dd class="col-sm-8">{{ claim.pnr|default:'-' }}</dd>
                 <dt class="col-sm-4">Flight Number</dt><dd class="col-sm-8">{{ claim.flight_number }}</dd>
+                <dt class="col-sm-4">Nomor Tiket</dt><dd class="col-sm-8">{{ claim.ticket_number|default:'-' }}</dd>
                 <dt class="col-sm-4">Tanggal Flight</dt><dd class="col-sm-8">{{ claim.flight_date }}</dd>
-                <dt class="col-sm-4">Jumlah Miles</dt><dd class="col-sm-8">{{ claim.miles_amount }}</dd>
+                <dt class="col-sm-4">Jumlah Miles</dt><dd class="col-sm-8">{% if claim.miles_amount %}{{ claim.miles_amount|floatformat:0 }}{% else %}<span style="color:var(--muted)">Belum diisi staff</span>{% endif %}</dd>
                 <dt class="col-sm-4">Status</dt>
                 <dd class="col-sm-8">
                     {% if claim.status == 'pending' %}
@@ -95,7 +101,9 @@
             <h3 style="font-size:18px; font-weight:800; color:#233247; margin-bottom:10px;">Ringkasan</h3>
             <ul class="summary-list">
                 <li><span class="summary-label">Claim ID</span><span>{{ claim.claim_id }}</span></li>
-                <li><span class="summary-label">Miles</span><span>{{ claim.miles_amount }}</span></li>
+                <li><span class="summary-label">Maskapai</span><span>{% if claim.maskapai %}{{ claim.maskapai.code }}{% else %}-{% endif %}</span></li>
+                <li><span class="summary-label">Rute</span><span>{% if claim.bandara_asal and claim.bandara_tujuan %}{{ claim.bandara_asal.iata_code }} → {{ claim.bandara_tujuan.iata_code }}{% else %}-{% endif %}</span></li>
+                <li><span class="summary-label">Miles</span><span>{% if claim.miles_amount %}{{ claim.miles_amount|floatformat:0 }}{% else %}-{% endif %}</span></li>
                 <li><span class="summary-label">Status</span><span>{{ claim.get_status_display }}</span></li>
                 <li><span class="summary-label">Dibuat</span><span>{{ claim.created_at|date:'d M Y, H:i' }}</span></li>
             </ul>

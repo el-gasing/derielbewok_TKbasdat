@@ -6,7 +6,8 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
 from django.db.models import Q
 from django.utils.html import strip_tags
-from .models import ClaimMissingMiles, Identity, Maskapai, Member, Staff, Hadiah, Penyedia, Mitra
+from django.db import connection
+from .models import Bandara, ClaimMissingMiles, Identity, Maskapai, Member, Staff, Hadiah, Penyedia, Mitra
 
 
 def _sanitize_text(value, max_length=None):
@@ -733,26 +734,70 @@ class StyledPasswordChangeForm(PasswordChangeForm):
     )
 
 
-class ClaimMissingMilesForm(forms.ModelForm):
+class ClaimMissingMilesForm(forms.Form):
     """Form untuk member membuat dan mengubah claim missing miles."""
 
-    class Meta:
-        model = ClaimMissingMiles
-        fields = ('flight_number', 'ticket_number', 'flight_date', 'miles_amount', 'reason', 'description')
-        widgets = {
-            'flight_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: GA123'}),
-            'ticket_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor tiket'}),
-            'flight_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'miles_amount': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
-            'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Alasan claim'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Keterangan tambahan (opsional)'}),
-        }
+    maskapai = forms.ModelChoiceField(
+        queryset=Maskapai.objects.none(),
+        empty_label='Pilih maskapai',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    bandara_asal = forms.ModelChoiceField(
+        queryset=Bandara.objects.none(),
+        label='Bandara Asal',
+        empty_label='Pilih bandara asal',
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    bandara_tujuan = forms.ModelChoiceField(
+        queryset=Bandara.objects.none(),
+        label='Bandara Tujuan',
+        empty_label='Pilih bandara tujuan',
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    kelas_kabin = forms.ChoiceField(
+        choices=[('', 'Pilih kelas')] + ClaimMissingMiles.KABIN_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    pnr = forms.CharField(
+        max_length=20,
+        required=False,
+        label='PNR',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Passenger Name Record'}),
+    )
+    flight_number = forms.CharField(
+        max_length=20,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Contoh: GA123'}),
+    )
+    ticket_number = forms.CharField(
+        max_length=50,
+        required=False,
+        label='Nomor Tiket',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor tiket'}),
+    )
+    flight_date = forms.DateField(
+        label='Tanggal Penerbangan',
+        input_formats=['%Y-%m-%d'],
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+    )
+    reason = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Alasan claim'}),
+    )
+    description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Keterangan tambahan (opsional)'}),
+    )
 
-    def clean_miles_amount(self):
-        miles_amount = self.cleaned_data['miles_amount']
-        if miles_amount <= 0:
-            raise forms.ValidationError('Jumlah miles harus lebih dari 0.')
-        return miles_amount
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['maskapai'].queryset = Maskapai.objects.filter(is_active=True).order_by('name')
+        self.fields['maskapai'].label_from_instance = lambda obj: f"{obj.code} - {obj.name}"
+        self.fields['bandara_asal'].queryset = Bandara.objects.all().order_by('iata_code')
+        self.fields['bandara_asal'].label_from_instance = lambda obj: f"{obj.iata_code} - {obj.nama}"
+        self.fields['bandara_tujuan'].queryset = Bandara.objects.all().order_by('iata_code')
+        self.fields['bandara_tujuan'].label_from_instance = lambda obj: f"{obj.iata_code} - {obj.nama}"
 
     def clean_flight_number(self):
         flight_number = _sanitize_text(self.cleaned_data.get('flight_number'), max_length=20).upper()
@@ -762,9 +807,10 @@ class ClaimMissingMilesForm(forms.ModelForm):
 
     def clean_ticket_number(self):
         ticket_number = self.cleaned_data.get('ticket_number', '').strip()
-        if ticket_number:
-            return _sanitize_text(ticket_number, max_length=50)
-        return ticket_number
+        return _sanitize_text(ticket_number, max_length=50) if ticket_number else ''
+
+    def clean_pnr(self):
+        return _sanitize_text(self.cleaned_data.get('pnr'), max_length=20).upper()
 
     def clean_reason(self):
         return _sanitize_text(self.cleaned_data.get('reason'), max_length=500)
@@ -773,16 +819,39 @@ class ClaimMissingMilesForm(forms.ModelForm):
         return _sanitize_text(self.cleaned_data.get('description'), max_length=500)
 
 
-class StaffClaimUpdateForm(forms.ModelForm):
+class StaffClaimUpdateForm(forms.Form):
     """Form untuk staff membaca dan mengubah status claim."""
 
-    class Meta:
-        model = ClaimMissingMiles
-        fields = ('status', 'description')
-        widgets = {
-            'status': forms.Select(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Catatan staff'}),
-        }
+    status = forms.ChoiceField(
+        choices=ClaimMissingMiles.STATUS_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    miles_amount = forms.IntegerField(
+        min_value=1,
+        required=False,
+        label='Jumlah Miles',
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '1', 'placeholder': 'Isi saat approve'}),
+    )
+    description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Catatan staff'}),
+    )
+
+    def __init__(self, *args, claim=None, **kwargs):
+        self.claim = claim
+        super().__init__(*args, **kwargs)
+        if claim and not self.is_bound:
+            self.fields['status'].initial = claim.status
+            self.fields['miles_amount'].initial = claim.miles_amount
+            self.fields['description'].initial = claim.description
+
+    def clean(self):
+        cleaned = super().clean()
+        status = cleaned.get('status')
+        miles_amount = cleaned.get('miles_amount')
+        if status == 'approved' and not miles_amount:
+            self.add_error('miles_amount', 'Jumlah miles wajib diisi saat menyetujui claim.')
+        return cleaned
 
     def clean_description(self):
         return _sanitize_text(self.cleaned_data.get('description'), max_length=500)
@@ -952,13 +1021,6 @@ class StaffManageMemberUpdateForm(forms.Form):
         self.member.save(update_fields=['phone_number', 'updated_at'])
         return self.member
 
-    def clean(self):
-        cleaned_data = super().clean()
-        miles_amount = cleaned_data.get('miles_amount')
-        if miles_amount and self.from_member.total_miles < miles_amount:
-            self.add_error('miles_amount', 'Total miles tidak mencukupi untuk transfer ini.')
-        return cleaned_data
-
 
 class IdentityForm(forms.ModelForm):
     class Meta:
@@ -1093,3 +1155,60 @@ class HadiahForm(forms.ModelForm):
         if commit:
             hadiah.save()
         return hadiah
+
+
+class MitraForm(forms.Form):
+    """Form untuk membuat / mengedit Mitra."""
+
+    name = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nama mitra'}),
+    )
+    code = forms.CharField(
+        max_length=10,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Kode unik (maks 10 karakter)'}),
+    )
+    contact_person = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nama contact person (opsional)'}),
+    )
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
+    )
+    phone_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor telepon (opsional)'}),
+    )
+    is_active = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
+    def __init__(self, *args, mitra=None, **kwargs):
+        self.mitra = mitra
+        super().__init__(*args, **kwargs)
+        if mitra and not self.is_bound:
+            self.fields['name'].initial = mitra.name
+            self.fields['code'].initial = mitra.code
+            self.fields['contact_person'].initial = mitra.contact_person
+            self.fields['email'].initial = mitra.email
+            self.fields['phone_number'].initial = mitra.phone_number
+            self.fields['is_active'].initial = mitra.is_active
+
+    def clean_name(self):
+        return _sanitize_text(self.cleaned_data.get('name'), max_length=100)
+
+    def clean_code(self):
+        code = _sanitize_text(self.cleaned_data.get('code'), max_length=10).upper()
+        qs = Mitra.objects.filter(code__iexact=code)
+        if self.mitra:
+            qs = qs.exclude(pk=self.mitra.pk)
+        if qs.exists():
+            raise forms.ValidationError('Kode mitra sudah digunakan.')
+        return code
+
+    def clean_phone_number(self):
+        return _sanitize_phone(self.cleaned_data.get('phone_number'))

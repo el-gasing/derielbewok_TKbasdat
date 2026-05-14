@@ -161,18 +161,22 @@
             <div style="text-transform:uppercase; letter-spacing:.18em; font-size:11px; color:var(--muted); font-weight:800; margin-bottom:8px;">Informasi Claim</div>
             <h3 style="font-size:18px; font-weight:800; color:#233247; margin-bottom:12px;">Detail singkat</h3>
             <ul class="info-list">
-                <li><span class="info-label">Member</span><span>{{ claim.member.member_id }} - {{ claim.member.user.username }}</span></li>
+                <li><span class="info-label">Member</span><span>{{ claim.member.member_id }} – {{ claim.member.user.username }}</span></li>
+                <li><span class="info-label">Maskapai</span><span>{% if claim.maskapai %}{{ claim.maskapai.code }} – {{ claim.maskapai.name }}{% else %}-{% endif %}</span></li>
+                <li><span class="info-label">Rute</span><span>{% if claim.bandara_asal and claim.bandara_tujuan %}{{ claim.bandara_asal.iata_code }} → {{ claim.bandara_tujuan.iata_code }}{% else %}-{% endif %}</span></li>
+                <li><span class="info-label">Kelas</span><span>{{ claim.get_kelas_kabin_display|default:'-' }}</span></li>
+                <li><span class="info-label">PNR</span><span>{{ claim.pnr|default:'-' }}</span></li>
                 <li><span class="info-label">Flight</span><span>{{ claim.flight_number }}</span></li>
                 <li><span class="info-label">No. Tiket</span><span>{{ claim.ticket_number|default:'-' }}</span></li>
                 <li><span class="info-label">Tanggal</span><span>{{ claim.flight_date }}</span></li>
-                <li><span class="info-label">Miles</span><span>{{ claim.miles_amount }}</span></li>
+                <li><span class="info-label">Miles</span><span>{% if claim.miles_amount %}{{ claim.miles_amount|floatformat:0 }}{% else %}<em style="color:var(--muted)">Isi di form</em>{% endif %}</span></li>
                 <li><span class="info-label">Status</span><span>{{ claim.get_status_display }}</span></li>
                 <li><span class="info-label">Alasan</span><span>{{ claim.reason }}</span></li>
             </ul>
             <ul class="helper-list">
-                <li><span class="helper-dot">1</span><span>Pastikan status yang dipilih sesuai hasil review claim.</span></li>
-                <li><span class="helper-dot">2</span><span>Catatan tambahan bisa diisi di field description jika perlu.</span></li>
-                <li><span class="helper-dot">3</span><span>Setelah disimpan, claim tetap bisa dicek dari daftar staff.</span></li>
+                <li><span class="helper-dot">1</span><span>Isi <strong>Jumlah Miles</strong> saat menyetujui (status Approved).</span></li>
+                <li><span class="helper-dot">2</span><span>Miles otomatis ditambahkan ke total_miles member.</span></li>
+                <li><span class="helper-dot">3</span><span>Catatan tambahan bisa diisi di field description.</span></li>
             </ul>
         </aside>
     </div>

@@ -202,12 +202,23 @@ class ClaimMissingMiles(models.Model):
         ('processed', 'Processed'),
     ]
 
+    KABIN_CHOICES = [
+        ('economy', 'Economy'),
+        ('business', 'Business'),
+        ('first', 'First Class'),
+    ]
+
     member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='missing_miles_claims')
     claim_id = models.CharField(max_length=50, unique=True)
+    maskapai = models.ForeignKey('Maskapai', on_delete=models.SET_NULL, null=True, blank=True, related_name='claims')
+    bandara_asal = models.ForeignKey('Bandara', on_delete=models.SET_NULL, null=True, blank=True, related_name='claims_asal')
+    bandara_tujuan = models.ForeignKey('Bandara', on_delete=models.SET_NULL, null=True, blank=True, related_name='claims_tujuan')
+    kelas_kabin = models.CharField(max_length=10, choices=KABIN_CHOICES, blank=True, null=True)
+    pnr = models.CharField(max_length=20, blank=True, null=True)
     flight_number = models.CharField(max_length=20)
     ticket_number = models.CharField(max_length=50, blank=True, null=True)
     flight_date = models.DateField()
-    miles_amount = models.BigIntegerField()
+    miles_amount = models.BigIntegerField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     reason = models.TextField()
     description = models.TextField(blank=True, null=True)
@@ -323,6 +334,62 @@ class Identity(models.Model):
         unique_together = (('member', 'document_number'),)
 
 
+class Bandara(models.Model):
+    iata_code = models.CharField(max_length=3, primary_key=True)
+    nama = models.CharField(max_length=100)
+    kota = models.CharField(max_length=100)
+    negara = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.iata_code} - {self.nama} ({self.kota})"
+
+    class Meta:
+        verbose_name = 'Bandara'
+        verbose_name_plural = 'Bandara'
+        ordering = ['iata_code']
+
+
+class AwardMilesPackage(models.Model):
+    id = models.CharField(max_length=20, primary_key=True)
+    harga_paket = models.DecimalField(max_digits=15, decimal_places=2)
+    jumlah_award_miles = models.IntegerField()
+
+    @staticmethod
+    def generate_id():
+        last = AwardMilesPackage.objects.order_by('id').last()
+        if last:
+            try:
+                num = int(last.id.split('-')[1])
+            except (IndexError, ValueError):
+                num = 0
+        else:
+            num = 0
+        return f"AMP-{num + 1:03d}"
+
+    def __str__(self):
+        return f"{self.id} - {self.jumlah_award_miles:,} miles @ Rp {self.harga_paket:,.0f}"
+
+    class Meta:
+        verbose_name = 'Award Miles Package'
+        verbose_name_plural = 'Award Miles Packages'
+        ordering = ['jumlah_award_miles']
+
+
+class MemberAwardMilesPackage(models.Model):
+    """Riwayat pembelian paket award miles oleh member"""
+    award_miles_package = models.ForeignKey(AwardMilesPackage, on_delete=models.PROTECT, related_name='purchases')
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='package_purchases')
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.member} - {self.award_miles_package} @ {self.timestamp}"
+
+    class Meta:
+        verbose_name = 'Member Award Miles Package'
+        verbose_name_plural = 'Member Award Miles Packages'
+        ordering = ['-timestamp']
+
+
 class Hadiah(models.Model):
     """Model untuk Hadiah (Gift/Prize) dalam program AeroMiles"""
     STATUS_CHOICES = [
@@ -382,3 +449,19 @@ class Hadiah(models.Model):
         verbose_name = 'Hadiah'
         verbose_name_plural = 'Hadiah'
         ordering = ['-created_at']
+
+
+class Redeem(models.Model):
+    """Riwayat penukaran hadiah oleh member menggunakan award miles"""
+    member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='redeems')
+    hadiah = models.ForeignKey(Hadiah, on_delete=models.PROTECT, related_name='redeems')
+    timestamp = models.DateTimeField(auto_now_add=True)
+    miles_used = models.BigIntegerField()
+
+    def __str__(self):
+        return f"{self.member} - {self.hadiah} @ {self.timestamp}"
+
+    class Meta:
+        verbose_name = 'Redeem'
+        verbose_name_plural = 'Redeems'
+        ordering = ['-timestamp']

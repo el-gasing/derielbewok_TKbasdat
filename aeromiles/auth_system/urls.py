@@ -44,4 +44,9 @@ urlpatterns = [
     # Member: Transfer Miles
     path('member/transfer/', views.member_transfer_list_view, name='member_transfer_list'),
     path('member/transfer/add/', views.member_transfer_create_view, name='member_transfer_create'),
+
+    # Staff: Mitra (Partner) Management
+    path('staff/mitra/create/', views.staff_mitra_create_view, name='staff_mitra_create'),
+    path('staff/mitra/<int:mitra_id>/edit/', views.staff_mitra_edit_view, name='staff_mitra_edit'),
+    path('staff/mitra/<int:mitra_id>/delete/', views.staff_mitra_delete_view, name='staff_mitra_delete'),
 ]
