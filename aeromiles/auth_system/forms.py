@@ -1030,24 +1030,37 @@ class StaffManageMemberUpdateForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor HP'})
     )
-    tier = forms.ModelChoiceField(
-        queryset=None,
+    tier = forms.ChoiceField(
+        choices=[],
         required=False,
-        empty_label='-- Tidak Ubah Tier --',
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
     def __init__(self, *args, member, **kwargs):
-        from .models import Tier
         self.member = member
         super().__init__(*args, **kwargs)
-        self.fields['tier'].queryset = Tier.objects.all().order_by('minimal_tier_miles')
+
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT id, tier_name FROM auth_system_tier
+                WHERE is_active = TRUE ORDER BY minimal_tier_miles
+            """)
+            tier_rows = cursor.fetchall()
+        self.fields['tier'].choices = [('', '-- Tidak Ubah Tier --')] + [
+            (str(r[0]), dict(self._tier_label_map()).get(r[1], r[1])) for r in tier_rows
+        ]
+
         if not self.is_bound:
             self.fields['first_name'].initial = member.user.first_name
             self.fields['last_name'].initial = member.user.last_name
             self.fields['email'].initial = member.user.email
             self.fields['phone_number'].initial = member.phone_number
-            self.fields['tier'].initial = member.tier
+            self.fields['tier'].initial = str(member.tier_id) if member.tier_id else ''
+
+    @staticmethod
+    def _tier_label_map():
+        return [('bronze', 'Bronze'), ('silver', 'Silver'),
+                ('gold', 'Gold'), ('platinum', 'Platinum')]
 
     def clean_first_name(self):
         return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
@@ -1057,26 +1070,43 @@ class StaffManageMemberUpdateForm(forms.Form):
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        duplicate = User.objects.filter(email__iexact=email).exclude(pk=self.member.user_id).exists()
-        if duplicate:
-            raise forms.ValidationError('Email sudah digunakan.')
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT 1 FROM auth_user WHERE LOWER(email) = LOWER(%s) AND id <> %s LIMIT 1",
+                [email, self.member.user_id]
+            )
+            if cursor.fetchone():
+                raise forms.ValidationError('Email sudah digunakan.')
         return email
 
     def clean_phone_number(self):
         return _sanitize_phone(self.cleaned_data.get('phone_number'))
 
     def save(self):
-        self.member.user.first_name = self.cleaned_data['first_name']
-        self.member.user.last_name = self.cleaned_data['last_name']
-        self.member.user.email = self.cleaned_data['email']
-        self.member.user.save(update_fields=['first_name', 'last_name', 'email'])
-        self.member.phone_number = self.cleaned_data['phone_number']
-        update_fields = ['phone_number', 'updated_at']
-        tier = self.cleaned_data.get('tier')
-        if tier is not None:
-            self.member.tier = tier
-            update_fields.append('tier')
-        self.member.save(update_fields=update_fields)
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE auth_user SET first_name = %s, last_name = %s, email = %s
+                WHERE id = %s
+            """, [
+                self.cleaned_data['first_name'],
+                self.cleaned_data['last_name'],
+                self.cleaned_data['email'],
+                self.member.user_id,
+            ])
+
+            tier_id = self.cleaned_data.get('tier') or None
+            if tier_id:
+                cursor.execute("""
+                    UPDATE auth_system_member
+                    SET phone_number = %s, tier_id = %s, updated_at = NOW()
+                    WHERE id = %s
+                """, [self.cleaned_data['phone_number'], tier_id, self.member.id])
+            else:
+                cursor.execute("""
+                    UPDATE auth_system_member
+                    SET phone_number = %s, updated_at = NOW()
+                    WHERE id = %s
+                """, [self.cleaned_data['phone_number'], self.member.id])
         return self.member
 
 

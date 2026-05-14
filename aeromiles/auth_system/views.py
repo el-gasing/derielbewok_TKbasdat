@@ -1,5 +1,6 @@
+from types import SimpleNamespace
 from django.db import DatabaseError, connection, transaction
-from django.db.models import F, Q
+from django.http import Http404
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import login, logout, update_session_auth_hash
@@ -7,6 +8,17 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from datetime import date
+
+
+def _row_to_ns(cursor, row):
+    if row is None:
+        return None
+    return SimpleNamespace(**dict(zip([c[0] for c in cursor.description], row)))
+
+
+def _rows_to_ns(cursor, rows):
+    cols = [c[0] for c in cursor.description]
+    return [SimpleNamespace(**dict(zip(cols, r))) for r in rows]
 from .forms import (
     ClaimMissingMilesForm,
     IdentityForm,
@@ -34,19 +46,270 @@ from .services import check_duplicate_claim, update_member_tier
 
 
 def _get_member(user):
-    """Mengembalikan profil member atau None."""
-    try:
-        return Member.objects.get(user=user)
-    except Member.DoesNotExist:
+    if user is None or not user.is_authenticated:
         return None
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT m.id, m.user_id, m.member_id, m.salutation, m.country_code,
+                   m.phone_number, m.birth_date, m.nationality, m.tier_id,
+                   m.total_miles, m.award_miles, m.is_active,
+                   m.created_at, m.updated_at,
+                   u.email, u.username, u.first_name, u.last_name,
+                   t.tier_name, t.minimal_tier_miles
+            FROM auth_system_member m
+            JOIN auth_user u ON u.id = m.user_id
+            LEFT JOIN auth_system_tier t ON t.id = m.tier_id
+            WHERE m.user_id = %s
+        """, [user.id])
+        row = cursor.fetchone()
+    if not row:
+        return None
+    return SimpleNamespace(
+        id=row[0], user_id=row[1], member_id=row[2], salutation=row[3],
+        country_code=row[4], phone_number=row[5], birth_date=row[6],
+        nationality=row[7], tier_id=row[8], total_miles=row[9],
+        award_miles=row[10], is_active=row[11], created_at=row[12],
+        updated_at=row[13],
+        user=SimpleNamespace(id=row[1], email=row[14], username=row[15],
+                             first_name=row[16], last_name=row[17]),
+        tier=SimpleNamespace(id=row[8], tier_name=row[18],
+                             minimal_tier_miles=row[19]) if row[8] else None,
+    )
+
+
+_STATUS_LABELS = {
+    'pending': 'Pending', 'approved': 'Approved',
+    'rejected': 'Rejected', 'processed': 'Processed',
+}
+_KABIN_LABELS = {'economy': 'Economy', 'business': 'Business', 'first': 'First Class'}
+
+
+def _build_claim_ns(d):
+    ns = SimpleNamespace(
+        id=d['id'], claim_id=d['claim_id'], flight_number=d['flight_number'],
+        flight_date=d['flight_date'], ticket_number=d['ticket_number'],
+        miles_amount=d['miles_amount'], status=d['status'], reason=d['reason'],
+        description=d['description'], pnr=d['pnr'], kelas_kabin=d['kelas_kabin'],
+        created_at=d['created_at'], updated_at=d['updated_at'],
+        member_id_fk=d['member_id'], approved_by_id=d.get('approved_by_id'),
+        get_status_display=lambda s=d['status']: _STATUS_LABELS.get(s, s),
+        get_kelas_kabin_display=lambda k=d['kelas_kabin']: _KABIN_LABELS.get(k, '') if k else '',
+    )
+    ns.maskapai = SimpleNamespace(
+        id=d.get('maskapai_id'), code=d.get('maskapai_code'),
+        name=d.get('maskapai_name')
+    ) if d.get('maskapai_id') else None
+    ns.bandara_asal = SimpleNamespace(
+        iata_code=d.get('asal_iata'), nama=d.get('asal_nama')
+    ) if d.get('asal_iata') else None
+    ns.bandara_tujuan = SimpleNamespace(
+        iata_code=d.get('tujuan_iata'), nama=d.get('tujuan_nama')
+    ) if d.get('tujuan_iata') else None
+    if 'm_member_id' in d:
+        ns.member = SimpleNamespace(
+            id=d['member_id'], member_id=d['m_member_id'],
+            total_miles=d.get('m_total_miles'),
+            user=SimpleNamespace(username=d.get('u_username'),
+                                 email=d.get('u_email')),
+            tier=SimpleNamespace(tier_name=d.get('t_tier_name'),
+                                 get_tier_name_display=lambda n=d.get('t_tier_name'):
+                                     dict([('bronze','Bronze'),('silver','Silver'),
+                                           ('gold','Gold'),('platinum','Platinum')]).get(n, n))
+                  if d.get('t_tier_name') else None,
+        )
+    if 'approved_by_username' in d and d.get('approved_by_username'):
+        ns.approved_by = SimpleNamespace(
+            user=SimpleNamespace(username=d['approved_by_username'])
+        )
+    else:
+        ns.approved_by = None
+    return ns
+
+
+_CLAIM_BASE_SELECT = """
+    SELECT c.id, c.member_id, c.claim_id, c.flight_number, c.flight_date,
+           c.ticket_number, c.miles_amount, c.status, c.reason, c.description,
+           c.pnr, c.kelas_kabin, c.created_at, c.updated_at, c.approved_by_id,
+           c.maskapai_id, mk.code AS maskapai_code, mk.name AS maskapai_name,
+           ba.iata_code AS asal_iata, ba.nama AS asal_nama,
+           bt.iata_code AS tujuan_iata, bt.nama AS tujuan_nama
+    FROM auth_system_claimmissingmiles c
+    LEFT JOIN auth_system_maskapai mk ON mk.id = c.maskapai_id
+    LEFT JOIN auth_system_bandara ba ON ba.iata_code = c.bandara_asal_id
+    LEFT JOIN auth_system_bandara bt ON bt.iata_code = c.bandara_tujuan_id
+"""
+
+
+def _get_mitra_by_id(mitra_id):
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT id, name, code, contact_person, email, phone_number,
+                   tanggal_kerja_sama, is_active, created_at, updated_at
+            FROM auth_system_mitra WHERE id = %s
+        """, [mitra_id])
+        row = cursor.fetchone()
+    if not row:
+        return None
+    return SimpleNamespace(
+        id=row[0], name=row[1], code=row[2], contact_person=row[3],
+        email=row[4], phone_number=row[5], tanggal_kerja_sama=row[6],
+        is_active=row[7], created_at=row[8], updated_at=row[9],
+    )
+
+
+def _get_identity_by_id(identity_id, member_id):
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT id, member_id, document_number, document_type, country,
+                   issue_date, expiry_date, is_expired, created_at, updated_at
+            FROM auth_system_identity
+            WHERE id = %s AND member_id = %s
+        """, [identity_id, member_id])
+        row = cursor.fetchone()
+    if not row:
+        return None
+    return SimpleNamespace(
+        id=row[0], member_id=row[1], document_number=row[2],
+        document_type=row[3], country=row[4], issue_date=row[5],
+        expiry_date=row[6], is_expired=row[7], created_at=row[8],
+        updated_at=row[9],
+    )
+
+
+def _get_hadiah_by_id(hadiah_id):
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT h.id, h.kode_hadiah, h.nama_hadiah, h.deskripsi,
+                   h.miles_diperlukan, h.tanggal_valid_mulai, h.tanggal_valid_akhir,
+                   h.is_active, h.created_at, h.updated_at,
+                   h.penyedia_id, h.mitra_id,
+                   p.name AS p_name, p.code AS p_code,
+                   mt.name AS mt_name, mt.code AS mt_code
+            FROM auth_system_hadiah h
+            LEFT JOIN auth_system_penyedia p ON p.id = h.penyedia_id
+            LEFT JOIN auth_system_mitra mt ON mt.id = h.mitra_id
+            WHERE h.id = %s
+        """, [hadiah_id])
+        cols = [c[0] for c in cursor.description]
+        row = cursor.fetchone()
+    if not row:
+        return None
+    d = dict(zip(cols, row))
+    ns = SimpleNamespace(
+        id=d['id'], kode_hadiah=d['kode_hadiah'], nama_hadiah=d['nama_hadiah'],
+        deskripsi=d['deskripsi'], miles_diperlukan=d['miles_diperlukan'],
+        tanggal_valid_mulai=d['tanggal_valid_mulai'],
+        tanggal_valid_akhir=d['tanggal_valid_akhir'],
+        is_active=d['is_active'], created_at=d['created_at'],
+        updated_at=d['updated_at'],
+        penyedia_id=d['penyedia_id'], mitra_id=d['mitra_id'],
+    )
+    ns.penyedia = SimpleNamespace(
+        id=d['penyedia_id'], name=d['p_name'], code=d['p_code']
+    ) if d['penyedia_id'] else None
+    ns.mitra = SimpleNamespace(
+        id=d['mitra_id'], name=d['mt_name'], code=d['mt_code']
+    ) if d['mitra_id'] else None
+    return ns
+
+
+def _get_claim_by_id(claim_id, member_id=None):
+    sql = """
+        SELECT c.id, c.member_id, c.claim_id, c.flight_number, c.flight_date,
+               c.ticket_number, c.miles_amount, c.status, c.reason, c.description,
+               c.pnr, c.kelas_kabin, c.created_at, c.updated_at, c.approved_by_id,
+               c.maskapai_id, c.bandara_asal_id, c.bandara_tujuan_id,
+               mk.code AS maskapai_code, mk.name AS maskapai_name,
+               ba.iata_code AS asal_iata, ba.nama AS asal_nama,
+               bt.iata_code AS tujuan_iata, bt.nama AS tujuan_nama,
+               m.member_id AS m_member_id, m.total_miles AS m_total_miles,
+               u.username AS u_username, u.email AS u_email,
+               t.tier_name AS t_tier_name,
+               sa.username AS approved_by_username
+        FROM auth_system_claimmissingmiles c
+        JOIN auth_system_member m ON m.id = c.member_id
+        JOIN auth_user u ON u.id = m.user_id
+        LEFT JOIN auth_system_tier t ON t.id = m.tier_id
+        LEFT JOIN auth_system_maskapai mk ON mk.id = c.maskapai_id
+        LEFT JOIN auth_system_bandara ba ON ba.iata_code = c.bandara_asal_id
+        LEFT JOIN auth_system_bandara bt ON bt.iata_code = c.bandara_tujuan_id
+        LEFT JOIN auth_system_staff staf ON staf.id = c.approved_by_id
+        LEFT JOIN auth_user sa ON sa.id = staf.user_id
+        WHERE c.id = %s
+    """
+    params = [claim_id]
+    if member_id is not None:
+        sql += " AND c.member_id = %s"
+        params.append(member_id)
+
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        cols = [x[0] for x in cursor.description]
+        row = cursor.fetchone()
+    if not row:
+        return None
+    d = dict(zip(cols, row))
+    ns = _build_claim_ns(d)
+    ns.maskapai_id = d.get('maskapai_id')
+    ns.bandara_asal_id = d.get('bandara_asal_id')
+    ns.bandara_tujuan_id = d.get('bandara_tujuan_id')
+    return ns
+
+
+def _get_member_by_id(member_id):
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT m.id, m.user_id, m.member_id, m.salutation, m.country_code,
+                   m.phone_number, m.birth_date, m.nationality, m.tier_id,
+                   m.total_miles, m.award_miles, m.is_active,
+                   m.created_at, m.updated_at,
+                   u.email, u.username, u.first_name, u.last_name,
+                   t.tier_name, t.minimal_tier_miles
+            FROM auth_system_member m
+            JOIN auth_user u ON u.id = m.user_id
+            LEFT JOIN auth_system_tier t ON t.id = m.tier_id
+            WHERE m.member_id = %s
+        """, [member_id])
+        row = cursor.fetchone()
+    if not row:
+        return None
+    return SimpleNamespace(
+        id=row[0], user_id=row[1], member_id=row[2], salutation=row[3],
+        country_code=row[4], phone_number=row[5], birth_date=row[6],
+        nationality=row[7], tier_id=row[8], total_miles=row[9],
+        award_miles=row[10], is_active=row[11], created_at=row[12],
+        updated_at=row[13],
+        user=SimpleNamespace(id=row[1], pk=row[1], email=row[14], username=row[15],
+                             first_name=row[16], last_name=row[17]),
+        tier=SimpleNamespace(id=row[8], tier_name=row[18],
+                             minimal_tier_miles=row[19]) if row[8] else None,
+    )
 
 
 def _get_staff(user):
-    """Mengembalikan profil staff atau None."""
-    try:
-        return Staff.objects.get(user=user)
-    except Staff.DoesNotExist:
+    if user is None or not user.is_authenticated:
         return None
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT s.id, s.user_id, s.staff_id, s.salutation, s.country_code,
+                   s.phone_number, s.birth_date, s.nationality, s.maskapai_id,
+                   s.department, s.is_active, s.created_at, s.updated_at,
+                   u.email, u.username, u.first_name, u.last_name
+            FROM auth_system_staff s
+            JOIN auth_user u ON u.id = s.user_id
+            WHERE s.user_id = %s
+        """, [user.id])
+        row = cursor.fetchone()
+    if not row:
+        return None
+    return SimpleNamespace(
+        id=row[0], user_id=row[1], staff_id=row[2], salutation=row[3],
+        country_code=row[4], phone_number=row[5], birth_date=row[6],
+        nationality=row[7], maskapai_id=row[8], department=row[9],
+        is_active=row[10], created_at=row[11], updated_at=row[12],
+        user=SimpleNamespace(id=row[1], email=row[13], username=row[14],
+                             first_name=row[15], last_name=row[16]),
+    )
 
 
 def _next_claim_id():
@@ -139,16 +402,46 @@ def manage_members_list_view(request):
         return redirect('auth_system:dashboard')
 
     search_query = request.GET.get('search', '').strip()
-    members_qs = Member.objects.select_related('user').order_by('-created_at')
-    if search_query:
-        members_qs = members_qs.filter(
-            Q(member_id__icontains=search_query)
-            | Q(user__first_name__icontains=search_query)
-            | Q(user__last_name__icontains=search_query)
-            | Q(user__email__icontains=search_query)
-        )
 
-    paginator = Paginator(members_qs, 10)
+    base_sql = """
+        SELECT m.id, m.member_id, m.phone_number, m.total_miles, m.award_miles,
+               m.is_active, m.created_at,
+               u.email, u.first_name, u.last_name,
+               t.tier_name
+        FROM auth_system_member m
+        JOIN auth_user u ON u.id = m.user_id
+        LEFT JOIN auth_system_tier t ON t.id = m.tier_id
+    """
+    params = []
+    if search_query:
+        base_sql += """
+            WHERE LOWER(m.member_id) LIKE LOWER(%s)
+               OR LOWER(u.first_name) LIKE LOWER(%s)
+               OR LOWER(u.last_name) LIKE LOWER(%s)
+               OR LOWER(u.email) LIKE LOWER(%s)
+        """
+        like = f'%{search_query}%'
+        params = [like, like, like, like]
+    base_sql += " ORDER BY m.created_at DESC"
+
+    with connection.cursor() as cursor:
+        cursor.execute(base_sql, params)
+        cols = [c[0] for c in cursor.description]
+        rows = cursor.fetchall()
+
+    members_data = []
+    for r in rows:
+        d = dict(zip(cols, r))
+        members_data.append(SimpleNamespace(
+            id=d['id'], member_id=d['member_id'], phone_number=d['phone_number'],
+            total_miles=d['total_miles'], award_miles=d['award_miles'],
+            is_active=d['is_active'], created_at=d['created_at'],
+            user=SimpleNamespace(email=d['email'], first_name=d['first_name'],
+                                 last_name=d['last_name']),
+            tier=SimpleNamespace(tier_name=d['tier_name']) if d['tier_name'] else None,
+        ))
+
+    paginator = Paginator(members_data, 10)
     members = paginator.get_page(request.GET.get('page'))
     return render(
         request,
@@ -185,7 +478,10 @@ def edit_member_view(request, member_id):
         messages.error(request, 'Halaman ini hanya untuk staf.')
         return redirect('auth_system:dashboard')
 
-    member = get_object_or_404(Member.objects.select_related('user'), member_id=member_id)
+    member = _get_member_by_id(member_id)
+    if member is None:
+        raise Http404('Member tidak ditemukan')
+
     if request.method == 'POST':
         form = StaffManageMemberUpdateForm(request.POST, member=member)
         if form.is_valid():
@@ -210,10 +506,13 @@ def delete_member_view(request, member_id):
         messages.error(request, 'Halaman ini hanya untuk staf.')
         return redirect('auth_system:dashboard')
 
-    member = get_object_or_404(Member.objects.select_related('user'), member_id=member_id)
-    user = member.user
+    member = _get_member_by_id(member_id)
+    if member is None:
+        raise Http404('Member tidak ditemukan')
+
     deleted_member_id = member.member_id
-    user.delete()
+    with connection.cursor() as cursor:
+        cursor.execute("DELETE FROM auth_user WHERE id = %s", [member.user_id])
     messages.success(request, f'Member {deleted_member_id} berhasil dihapus.')
     return redirect('auth_system:manage_members_list')
 
@@ -375,7 +674,13 @@ def member_claim_list_view(request):
         messages.error(request, 'Halaman ini hanya untuk member.')
         return redirect('auth_system:dashboard')
 
-    claims = ClaimMissingMiles.objects.filter(member=member).order_by('-created_at')
+    with connection.cursor() as cursor:
+        cursor.execute(
+            _CLAIM_BASE_SELECT + " WHERE c.member_id = %s ORDER BY c.created_at DESC",
+            [member.id]
+        )
+        cols = [x[0] for x in cursor.description]
+        claims = [_build_claim_ns(dict(zip(cols, r))) for r in cursor.fetchall()]
     return render(request, 'auth_system/member_claim_list.html', {'member': member, 'claims': claims})
 
 
@@ -448,7 +753,9 @@ def member_claim_detail_view(request, claim_id):
         messages.error(request, 'Halaman ini hanya untuk member.')
         return redirect('auth_system:dashboard')
 
-    claim = get_object_or_404(ClaimMissingMiles, id=claim_id, member=member)
+    claim = _get_claim_by_id(claim_id, member_id=member.id)
+    if claim is None:
+        raise Http404('Claim tidak ditemukan')
     return render(request, 'auth_system/member_claim_detail.html', {'claim': claim})
 
 
@@ -460,7 +767,9 @@ def member_claim_update_view(request, claim_id):
         messages.error(request, 'Halaman ini hanya untuk member.')
         return redirect('auth_system:dashboard')
 
-    claim = get_object_or_404(ClaimMissingMiles, id=claim_id, member=member)
+    claim = _get_claim_by_id(claim_id, member_id=member.id)
+    if claim is None:
+        raise Http404('Claim tidak ditemukan')
     if claim.status != 'pending':
         messages.error(request, 'Hanya klaim dengan status Pending yang dapat diubah.')
         return redirect('auth_system:member_claim_list')
@@ -515,9 +824,9 @@ def member_claim_update_view(request, claim_id):
                 messages.error(request, _extract_db_error_message(exc))
     else:
         initial = {
-            'maskapai': claim.maskapai,
-            'bandara_asal': claim.bandara_asal,
-            'bandara_tujuan': claim.bandara_tujuan,
+            'maskapai': claim.maskapai_id,
+            'bandara_asal': claim.bandara_asal_id,
+            'bandara_tujuan': claim.bandara_tujuan_id,
             'kelas_kabin': claim.kelas_kabin,
             'pnr': claim.pnr,
             'flight_number': claim.flight_number,
@@ -539,7 +848,9 @@ def member_claim_delete_view(request, claim_id):
         messages.error(request, 'Halaman ini hanya untuk member.')
         return redirect('auth_system:dashboard')
 
-    claim = get_object_or_404(ClaimMissingMiles, id=claim_id, member=member)
+    claim = _get_claim_by_id(claim_id, member_id=member.id)
+    if claim is None:
+        raise Http404('Claim tidak ditemukan')
     if claim.status != 'pending':
         messages.error(request, 'Hanya klaim dengan status Pending yang dapat dihapus.')
         return redirect('auth_system:member_claim_list')
@@ -557,7 +868,29 @@ def staff_claim_list_view(request):
         messages.error(request, 'Halaman ini hanya untuk staff.')
         return redirect('auth_system:dashboard')
 
-    claims = ClaimMissingMiles.objects.select_related('member', 'member__user').order_by('-created_at')
+    sql = """
+        SELECT c.id, c.member_id, c.claim_id, c.flight_number, c.flight_date,
+               c.ticket_number, c.miles_amount, c.status, c.reason, c.description,
+               c.pnr, c.kelas_kabin, c.created_at, c.updated_at, c.approved_by_id,
+               c.maskapai_id, mk.code AS maskapai_code, mk.name AS maskapai_name,
+               ba.iata_code AS asal_iata, ba.nama AS asal_nama,
+               bt.iata_code AS tujuan_iata, bt.nama AS tujuan_nama,
+               m.member_id AS m_member_id, m.total_miles AS m_total_miles,
+               u.username AS u_username, u.email AS u_email,
+               t.tier_name AS t_tier_name
+        FROM auth_system_claimmissingmiles c
+        JOIN auth_system_member m ON m.id = c.member_id
+        JOIN auth_user u ON u.id = m.user_id
+        LEFT JOIN auth_system_tier t ON t.id = m.tier_id
+        LEFT JOIN auth_system_maskapai mk ON mk.id = c.maskapai_id
+        LEFT JOIN auth_system_bandara ba ON ba.iata_code = c.bandara_asal_id
+        LEFT JOIN auth_system_bandara bt ON bt.iata_code = c.bandara_tujuan_id
+        ORDER BY c.created_at DESC
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(sql)
+        cols = [x[0] for x in cursor.description]
+        claims = [_build_claim_ns(dict(zip(cols, r))) for r in cursor.fetchall()]
     return render(request, 'auth_system/staff_claim_list.html', {'staff': staff, 'claims': claims})
 
 
@@ -569,7 +902,9 @@ def staff_claim_update_view(request, claim_id):
         messages.error(request, 'Halaman ini hanya untuk staff.')
         return redirect('auth_system:dashboard')
 
-    claim = get_object_or_404(ClaimMissingMiles.objects.select_related('member', 'member__user', 'member__tier'), id=claim_id)
+    claim = _get_claim_by_id(claim_id)
+    if claim is None:
+        raise Http404('Claim tidak ditemukan')
     old_status = claim.status
 
     if request.method == 'POST':
@@ -599,12 +934,19 @@ def staff_claim_update_view(request, claim_id):
 
                             if connection.vendor == 'postgresql':
                                 cursor.execute('SELECT sp_auto_update_member_tier(%s);', [claim.member.id])
-                            else:
-                                update_member_tier(claim.member)
 
                     if old_status != 'approved' and new_status == 'approved' and miles_amount:
-                        claim.member.refresh_from_db(fields=['tier'])
-                        new_tier_name = claim.member.tier.get_tier_name_display() if claim.member.tier else 'Tidak ada'
+                        with connection.cursor() as cursor:
+                            cursor.execute("""
+                                SELECT t.tier_name FROM auth_system_member m
+                                LEFT JOIN auth_system_tier t ON t.id = m.tier_id
+                                WHERE m.id = %s
+                            """, [claim.member.id])
+                            tier_row = cursor.fetchone()
+                        new_tier_raw = tier_row[0] if tier_row else None
+                        new_tier_name = dict([('bronze','Bronze'),('silver','Silver'),
+                                              ('gold','Gold'),('platinum','Platinum')]).get(
+                                                  new_tier_raw, 'Tidak ada') if new_tier_raw else 'Tidak ada'
                         if old_tier_name != new_tier_name:
                             messages.success(
                                 request,
@@ -1004,9 +1346,11 @@ def staff_mitra_create_view(request):
                             cd.get('tanggal_kerja_sama') or None,
                             cd.get('is_active', True),
                         ])
-                        # Auto-create matching Penyedia entry
-                        penyedia_exists = Penyedia.objects.filter(code__iexact=cd['code']).exists()
-                        if not penyedia_exists:
+                        cursor.execute(
+                            "SELECT 1 FROM auth_system_penyedia WHERE LOWER(code) = LOWER(%s) LIMIT 1",
+                            [cd['code']]
+                        )
+                        if cursor.fetchone() is None:
                             cursor.execute("""
                                 INSERT INTO auth_system_penyedia
                                     (name, code, contact_person, email, phone_number, is_active, created_at, updated_at)
@@ -1036,7 +1380,9 @@ def staff_mitra_edit_view(request, mitra_id):
         messages.error(request, 'Halaman ini hanya untuk staff.')
         return redirect('auth_system:dashboard')
 
-    mitra = get_object_or_404(Mitra, id=mitra_id)
+    mitra = _get_mitra_by_id(mitra_id)
+    if mitra is None:
+        raise Http404('Mitra tidak ditemukan')
 
     if request.method == 'POST':
         form = MitraForm(request.POST, mitra=mitra)
@@ -1076,7 +1422,9 @@ def staff_mitra_delete_view(request, mitra_id):
         messages.error(request, 'Halaman ini hanya untuk staff.')
         return redirect('auth_system:dashboard')
 
-    mitra = get_object_or_404(Mitra, id=mitra_id)
+    mitra = _get_mitra_by_id(mitra_id)
+    if mitra is None:
+        raise Http404('Mitra tidak ditemukan')
     try:
         with connection.cursor() as cursor:
             cursor.execute("DELETE FROM auth_system_mitra WHERE id = %s", [mitra_id])
@@ -1288,7 +1636,16 @@ def member_identities_list_view(request):
         messages.error(request, 'Halaman ini hanya untuk member.')
         return redirect('auth_system:dashboard')
 
-    identities = Identity.objects.filter(member=member).order_by('-created_at')
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT id, document_number, document_type, country, issue_date,
+                   expiry_date, is_expired, created_at, updated_at
+            FROM auth_system_identity
+            WHERE member_id = %s
+            ORDER BY created_at DESC
+        """, [member.id])
+        cols = [c[0] for c in cursor.description]
+        identities = [SimpleNamespace(**dict(zip(cols, r))) for r in cursor.fetchall()]
     return render(request, 'member/identity/identities_list.html', {'member': member, 'identities': identities})
 
 
@@ -1367,21 +1724,56 @@ def staff_hadiah_list_view(request):
     _ensure_default_penyedia()
     _ensure_default_mitra()
 
-    # Filter berdasarkan parameter query
-    hadiah_list = Hadiah.objects.select_related('penyedia', 'mitra').all().order_by('-created_at')
-
-    # Filter berdasarkan penyedia
     penyedia_id = request.GET.get('penyedia', '')
-    if penyedia_id:
-        hadiah_list = hadiah_list.filter(penyedia_id=penyedia_id)
-
-    # Filter berdasarkan status keaktifan
     status = request.GET.get('status', '')
-    if status:
-        hadiah_list = hadiah_list.filter(status=status)
 
-    # Get semua penyedia aktif untuk dropdown filter
-    penyedia_list = Penyedia.objects.filter(is_active=True).values_list('id', 'name').order_by('name')
+    sql = """
+        SELECT h.id, h.kode_hadiah, h.nama_hadiah, h.deskripsi,
+               h.miles_diperlukan, h.tanggal_valid_mulai, h.tanggal_valid_akhir,
+               h.is_active, h.created_at, h.updated_at,
+               p.id AS p_id, p.name AS p_name, p.code AS p_code,
+               mt.id AS mt_id, mt.name AS mt_name, mt.code AS mt_code
+        FROM auth_system_hadiah h
+        LEFT JOIN auth_system_penyedia p ON p.id = h.penyedia_id
+        LEFT JOIN auth_system_mitra mt ON mt.id = h.mitra_id
+    """
+    where, params = [], []
+    if penyedia_id:
+        where.append("h.penyedia_id = %s")
+        params.append(penyedia_id)
+    if status:
+        where.append("h.is_active = %s")
+        params.append(status == 'active')
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY h.created_at DESC"
+
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        cols = [c[0] for c in cursor.description]
+        rows = cursor.fetchall()
+
+    hadiah_list = []
+    for r in rows:
+        d = dict(zip(cols, r))
+        h = SimpleNamespace(
+            id=d['id'], kode_hadiah=d['kode_hadiah'], nama_hadiah=d['nama_hadiah'],
+            deskripsi=d['deskripsi'], miles_diperlukan=d['miles_diperlukan'],
+            tanggal_valid_mulai=d['tanggal_valid_mulai'],
+            tanggal_valid_akhir=d['tanggal_valid_akhir'],
+            is_active=d['is_active'], created_at=d['created_at'],
+            updated_at=d['updated_at'],
+        )
+        h.penyedia = SimpleNamespace(id=d['p_id'], name=d['p_name'], code=d['p_code']) if d['p_id'] else None
+        h.mitra = SimpleNamespace(id=d['mt_id'], name=d['mt_name'], code=d['mt_code']) if d['mt_id'] else None
+        hadiah_list.append(h)
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT id, name FROM auth_system_penyedia
+            WHERE is_active = TRUE ORDER BY name
+        """)
+        penyedia_list = cursor.fetchall()
 
     context = {
         'hadiah_list': hadiah_list,
@@ -1430,7 +1822,9 @@ def staff_hadiah_detail_view(request, hadiah_id):
         messages.error(request, 'Halaman ini hanya untuk staf.')
         return redirect('auth_system:dashboard')
 
-    hadiah = get_object_or_404(Hadiah.objects.select_related('penyedia', 'mitra'), id=hadiah_id)
+    hadiah = _get_hadiah_by_id(hadiah_id)
+    if hadiah is None:
+        raise Http404('Hadiah tidak ditemukan')
 
     context = {
         'hadiah': hadiah,
