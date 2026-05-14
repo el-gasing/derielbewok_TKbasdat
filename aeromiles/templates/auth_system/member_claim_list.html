@@ -137,12 +137,23 @@
         {% endfor %}
     {% endif %}
 
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+        <button class="status-filter-btn active" data-status="all">Semua</button>
+        <button class="status-filter-btn" data-status="pending">Menunggu</button>
+        <button class="status-filter-btn" data-status="approved">Disetujui</button>
+        <button class="status-filter-btn" data-status="rejected">Ditolak</button>
+        <button class="status-filter-btn" data-status="processed">Diproses</button>
+    </div>
+
     <div class="table-card">
         <div class="table-responsive">
             <table class="table mb-0">
                 <thead>
                     <tr>
                         <th>ID Claim</th>
+                        <th>Maskapai</th>
+                        <th>Rute</th>
+                        <th>Kelas</th>
                         <th>Flight</th>
                         <th>Tanggal</th>
                         <th>Miles</th>
@@ -152,11 +163,18 @@
                 </thead>
                 <tbody>
                     {% for claim in claims %}
-                        <tr>
+                        <tr data-status="{{ claim.status }}">
                             <td>{{ claim.claim_id }}</td>
+                            <td>{% if claim.maskapai %}{{ claim.maskapai.code }}{% else %}-{% endif %}</td>
+                            <td>
+                                {% if claim.bandara_asal and claim.bandara_tujuan %}
+                                    {{ claim.bandara_asal.iata_code }} → {{ claim.bandara_tujuan.iata_code }}
+                                {% else %}-{% endif %}
+                            </td>
+                            <td>{{ claim.get_kelas_kabin_display|default:'-' }}</td>
                             <td>{{ claim.flight_number }}</td>
                             <td>{{ claim.flight_date }}</td>
-                            <td>{{ claim.miles_amount }}</td>
+                            <td>{{ claim.miles_amount|default:'-' }}</td>
                             <td>
                                 {% if claim.status == 'pending' %}
                                     <span class="badge-status badge-pending">{{ claim.get_status_display }}</span>
@@ -171,17 +189,19 @@
                             <td>
                                 <div class="action-buttons">
                                     <a href="{% url 'auth_system:member_claim_detail' claim.id %}" class="soft-button" style="color:#233247; border-color:var(--line); background:#fff;">Detail</a>
-                                    <a href="{% url 'auth_system:member_claim_update' claim.id %}" class="soft-button" style="color:#233247; border-color:var(--line); background:#fff;">Edit</a>
-                                    <form method="post" action="{% url 'auth_system:member_claim_delete' claim.id %}" onsubmit="return confirm('Hapus claim ini?');" style="display:inline-block;">
-                                        {% csrf_token %}
-                                        <button type="submit" class="soft-button" style="color:#b42318; border-color:#ffd3d8; background:#fff;">Hapus</button>
-                                    </form>
+                                    {% if claim.status == 'pending' %}
+                                        <a href="{% url 'auth_system:member_claim_update' claim.id %}" class="soft-button" style="color:#233247; border-color:var(--line); background:#fff;">Edit</a>
+                                        <form method="post" action="{% url 'auth_system:member_claim_delete' claim.id %}" onsubmit="return confirm('Hapus claim ini?');" style="display:inline-block;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="soft-button" style="color:#b42318; border-color:#ffd3d8; background:#fff;">Hapus</button>
+                                        </form>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="6">
+                            <td colspan="9">
                                 <div class="empty-state">
                                     <div class="empty-icon">✈</div>
                                     <h3 class="mb-2">Belum ada claim missing miles</h3>
@@ -196,6 +216,28 @@
         </div>
     </div>
 </div>
+
+<style>
+.status-filter-btn {
+    padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line);
+    background: #fff; color: #475569; font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: all .15s ease;
+}
+.status-filter-btn.active { background: #233247; color: #fff; border-color: #233247; }
+</style>
+
+<script>
+document.querySelectorAll('.status-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const status = btn.dataset.status;
+        document.querySelectorAll('tbody tr[data-status]').forEach(row => {
+            row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+        });
+    });
+});
+</script>
 {% endblock %}
 
 {% block extra_js %}

@@ -33,6 +33,7 @@ urlpatterns = [
     path('staff/rewards/', views.staff_rewards_view, name='staff_rewards'),
     path('staff/partners/', views.staff_partners_view, name='staff_partners'),
     path('staff/reports/transactions/', views.staff_transaction_report_view, name='staff_transaction_report'),
+    path('staff/reports/transactions/delete/', views.staff_transaction_delete_view, name='staff_transaction_delete'),
 
     # Staff: Hadiah (Reward/Prize) Management
     path('staff/hadiah/', views.staff_hadiah_list_view, name='staff_hadiah_list'),

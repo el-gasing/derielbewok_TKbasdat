@@ -860,15 +860,17 @@ class StaffClaimUpdateForm(forms.Form):
 class TransferMilesForm(forms.Form):
     """Form transfer miles antar member."""
 
-    to_member_id = forms.CharField(
-        max_length=50,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Masukkan ID Member tujuan'})
+    email_penerima = forms.EmailField(
+        label='Email Member Penerima',
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email member tujuan'})
     )
     miles_amount = forms.IntegerField(
+        label='Jumlah Miles',
         min_value=1,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '1'})
     )
     description = forms.CharField(
+        label='Keterangan',
         required=False,
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Keterangan transfer (opsional)'})
     )
@@ -878,17 +880,18 @@ class TransferMilesForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.to_member = None
 
-    def clean_to_member_id(self):
-        to_member_id = _sanitize_text(self.cleaned_data['to_member_id'], max_length=50).upper()
+    def clean_email_penerima(self):
+        email = self.cleaned_data['email_penerima'].strip().lower()
         try:
-            self.to_member = Member.objects.get(member_id=to_member_id, is_active=True)
-        except Member.DoesNotExist as exc:
-            raise forms.ValidationError('ID Member tujuan tidak ditemukan atau tidak aktif.') from exc
+            user = User.objects.get(email__iexact=email)
+            self.to_member = Member.objects.get(user=user, is_active=True)
+        except (User.DoesNotExist, Member.DoesNotExist) as exc:
+            raise forms.ValidationError('Email tidak ditemukan atau member tidak aktif.') from exc
 
         if self.to_member.id == self.from_member.id:
             raise forms.ValidationError('Tidak bisa transfer ke akun sendiri.')
 
-        return to_member_id
+        return email
 
     def clean_description(self):
         return _sanitize_text(self.cleaned_data.get('description'), max_length=500)
@@ -986,15 +989,24 @@ class StaffManageMemberUpdateForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor HP'})
     )
+    tier = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        empty_label='-- Tidak Ubah Tier --',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
 
     def __init__(self, *args, member, **kwargs):
+        from .models import Tier
         self.member = member
         super().__init__(*args, **kwargs)
+        self.fields['tier'].queryset = Tier.objects.all().order_by('minimal_tier_miles')
         if not self.is_bound:
             self.fields['first_name'].initial = member.user.first_name
             self.fields['last_name'].initial = member.user.last_name
             self.fields['email'].initial = member.user.email
             self.fields['phone_number'].initial = member.phone_number
+            self.fields['tier'].initial = member.tier
 
     def clean_first_name(self):
         return _sanitize_text(self.cleaned_data.get('first_name'), max_length=50)
@@ -1018,7 +1030,12 @@ class StaffManageMemberUpdateForm(forms.Form):
         self.member.user.email = self.cleaned_data['email']
         self.member.user.save(update_fields=['first_name', 'last_name', 'email'])
         self.member.phone_number = self.cleaned_data['phone_number']
-        self.member.save(update_fields=['phone_number', 'updated_at'])
+        update_fields = ['phone_number', 'updated_at']
+        tier = self.cleaned_data.get('tier')
+        if tier is not None:
+            self.member.tier = tier
+            update_fields.append('tier')
+        self.member.save(update_fields=update_fields)
         return self.member
 
 
@@ -1181,6 +1198,11 @@ class MitraForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nomor telepon (opsional)'}),
     )
+    tanggal_kerja_sama = forms.DateField(
+        required=False,
+        label='Tanggal Kerja Sama',
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+    )
     is_active = forms.BooleanField(
         required=False,
         initial=True,
@@ -1196,6 +1218,7 @@ class MitraForm(forms.Form):
             self.fields['contact_person'].initial = mitra.contact_person
             self.fields['email'].initial = mitra.email
             self.fields['phone_number'].initial = mitra.phone_number
+            self.fields['tanggal_kerja_sama'].initial = mitra.tanggal_kerja_sama
             self.fields['is_active'].initial = mitra.is_active
 
     def clean_name(self):

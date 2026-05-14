@@ -60,6 +60,13 @@
             {{ form.phone_number }}
             {% if form.phone_number.errors %}<ul class="errorlist">{% for e in form.phone_number.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
           </div>
+          <div class="mitra-field">
+            <label for="{{ form.tanggal_kerja_sama.id_for_label }}">Tanggal Kerja Sama</label>
+            {{ form.tanggal_kerja_sama }}
+            {% if form.tanggal_kerja_sama.errors %}<ul class="errorlist">{% for e in form.tanggal_kerja_sama.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          <div class="mitra-field d-flex align-items-center gap-2 pt-2">
+          </div>
           <div class="mitra-field full d-flex align-items-center gap-2 pt-2">
             {{ form.is_active }}
             <label for="{{ form.is_active.id_for_label }}" class="mb-0">Mitra aktif</label>

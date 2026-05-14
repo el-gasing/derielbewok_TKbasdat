@@ -115,6 +115,29 @@
         {% endfor %}
     {% endif %}
 
+    <div class="d-flex gap-3 mb-3 flex-wrap align-items-center">
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="status-filter-btn active" data-status="all">Semua</button>
+            <button class="status-filter-btn" data-status="pending">Menunggu</button>
+            <button class="status-filter-btn" data-status="approved">Disetujui</button>
+            <button class="status-filter-btn" data-status="rejected">Ditolak</button>
+            <button class="status-filter-btn" data-status="processed">Diproses</button>
+        </div>
+        <select id="maskapaiFilter" class="form-select" style="max-width:200px; height:38px; font-size:13px;">
+            <option value="">Semua Maskapai</option>
+            {% for claim in claims %}
+                {% if claim.maskapai %}
+                    <option value="{{ claim.maskapai.code }}">{{ claim.maskapai.code }} - {{ claim.maskapai.name }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+        <div class="d-flex gap-2 align-items-center">
+            <input type="date" id="dateFrom" class="form-control" style="max-width:160px; height:38px; font-size:13px;" placeholder="Dari">
+            <span style="color:#475569">–</span>
+            <input type="date" id="dateTo" class="form-control" style="max-width:160px; height:38px; font-size:13px;" placeholder="Sampai">
+        </div>
+    </div>
+
     <div class="table-card">
         <div class="table-responsive">
             <table class="table mb-0">
@@ -122,6 +145,8 @@
                     <tr>
                         <th>ID Claim</th>
                         <th>Member</th>
+                        <th>Maskapai</th>
+                        <th>Rute</th>
                         <th>Flight</th>
                         <th>Tanggal</th>
                         <th>Miles</th>
@@ -131,12 +156,18 @@
                 </thead>
                 <tbody>
                     {% for claim in claims %}
-                        <tr>
+                        <tr data-status="{{ claim.status }}" data-maskapai="{% if claim.maskapai %}{{ claim.maskapai.code }}{% endif %}" data-date="{{ claim.flight_date }}">
                             <td><strong>{{ claim.claim_id }}</strong></td>
                             <td>{{ claim.member.member_id }} - {{ claim.member.user.username }}</td>
+                            <td>{% if claim.maskapai %}{{ claim.maskapai.code }} - {{ claim.maskapai.name }}{% else %}-{% endif %}</td>
+                            <td>
+                                {% if claim.bandara_asal and claim.bandara_tujuan %}
+                                    {{ claim.bandara_asal.iata_code }} → {{ claim.bandara_tujuan.iata_code }}
+                                {% else %}-{% endif %}
+                            </td>
                             <td>{{ claim.flight_number }}</td>
                             <td>{{ claim.flight_date }}</td>
-                            <td>{{ claim.miles_amount }}</td>
+                            <td>{{ claim.miles_amount|default:'-' }}</td>
                             <td>
                                 {% if claim.status == 'pending' %}
                                     <span class="badge-status badge-pending">{{ claim.get_status_display }}</span>
@@ -154,7 +185,7 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="7">
+                            <td colspan="9">
                                 <div class="empty-state">
                                     <div class="empty-icon">✈</div>
                                     <div>Belum ada claim missing miles.</div>
@@ -167,4 +198,40 @@
         </div>
     </div>
 </div>
+
+<style>
+.status-filter-btn {
+    padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line);
+    background: #fff; color: #475569; font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: all .15s ease;
+}
+.status-filter-btn.active { background: #233247; color: #fff; border-color: #233247; }
+</style>
+
+<script>
+function applyFilters() {
+    const status = document.querySelector('.status-filter-btn.active')?.dataset.status || 'all';
+    const maskapai = document.getElementById('maskapaiFilter').value;
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    document.querySelectorAll('tbody tr[data-status]').forEach(row => {
+        const matchStatus = status === 'all' || row.dataset.status === status;
+        const matchMaskapai = !maskapai || row.dataset.maskapai === maskapai;
+        const rowDate = row.dataset.date;
+        const matchDateFrom = !dateFrom || rowDate >= dateFrom;
+        const matchDateTo = !dateTo || rowDate <= dateTo;
+        row.style.display = (matchStatus && matchMaskapai && matchDateFrom && matchDateTo) ? '' : 'none';
+    });
+}
+document.querySelectorAll('.status-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.status-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyFilters();
+    });
+});
+document.getElementById('maskapaiFilter').addEventListener('change', applyFilters);
+document.getElementById('dateFrom').addEventListener('change', applyFilters);
+document.getElementById('dateTo').addEventListener('change', applyFilters);
+</script>
 {% endblock %}

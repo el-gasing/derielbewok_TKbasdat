@@ -409,6 +409,8 @@
                                 <button
                                     type="button"
                                     class="btn-delete-row"
+                                    data-ref-id="{{ transaction.ref_id }}"
+                                    data-type="{{ transaction.type }}"
                                     {% if not transaction.can_delete %}disabled title="Klaim disetujui tidak dapat dihapus"{% else %}title="Hapus riwayat"{% endif %}
                                 >
                                     <i class="fa-regular fa-trash-can"></i>
@@ -451,6 +453,12 @@
     </section>
 </div>
 
+<form id="deleteForm" method="post" action="{% url 'auth_system:staff_transaction_delete' %}" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="type" id="deleteType">
+    <input type="hidden" name="ref_id" id="deleteRefId">
+</form>
+
 <div id="deleteModal" class="delete-modal" aria-hidden="true">
     <div class="delete-modal-content" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
         <h2 id="deleteModalTitle">Hapus Riwayat?</h2>
@@ -489,11 +497,12 @@
     const deleteModal = document.getElementById('deleteModal');
     const cancelDeleteModal = document.getElementById('cancelDeleteModal');
     const confirmDeleteModal = document.getElementById('confirmDeleteModal');
-    let selectedRow = null;
+    const deleteForm = document.getElementById('deleteForm');
 
     document.querySelectorAll('.btn-delete-row:not(:disabled)').forEach((button) => {
         button.addEventListener('click', () => {
-            selectedRow = button.closest('tr');
+            document.getElementById('deleteType').value = button.dataset.type;
+            document.getElementById('deleteRefId').value = button.dataset.refId;
             deleteModal.classList.add('show');
             deleteModal.setAttribute('aria-hidden', 'false');
         });
@@ -512,10 +521,7 @@
     });
 
     confirmDeleteModal.addEventListener('click', () => {
-        if (selectedRow) {
-            selectedRow.remove();
-        }
-        hideDeleteModal();
+        deleteForm.submit();
     });
 </script>
 {% endblock %}

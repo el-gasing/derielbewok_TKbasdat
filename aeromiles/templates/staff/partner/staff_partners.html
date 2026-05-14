@@ -132,6 +132,7 @@
                     <li><span class="partner-label">Contact</span><span>{{ partner.contact_person|default:'-' }}</span></li>
                     <li><span class="partner-label">Email</span><span>{{ partner.email }}</span></li>
                     <li><span class="partner-label">Telepon</span><span>{{ partner.phone_number|default:'-' }}</span></li>
+                    <li><span class="partner-label">Kerja Sama</span><span>{{ partner.tanggal_kerja_sama|date:'d M Y'|default:'-' }}</span></li>
                     <li><span class="partner-label">Dibuat</span><span>{{ partner.created_at|date:'d M Y' }}</span></li>
                 </ul>
                 <div class="d-flex gap-2 mt-3">

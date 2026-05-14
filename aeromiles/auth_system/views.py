@@ -730,6 +730,9 @@ def staff_transaction_report_view(request):
         'total_purchased_miles': f'{total_purchased_miles:,}',
     }
 
+    for txn in transactions:
+        txn['can_delete'] = txn['type'] in ('Transfer', 'Redeem', 'Package')
+
     context = {
         'staff': staff,
         'summary': summary,
@@ -737,6 +740,40 @@ def staff_transaction_report_view(request):
         'top_members': top_members,
     }
     return render(request, 'staff/report/staff_transaction_report.html', context)
+
+
+@require_http_methods(["POST"])
+@login_required(login_url='auth_system:login')
+def staff_transaction_delete_view(request):
+    staff = _get_staff(request.user)
+    if not staff:
+        return redirect('auth_system:dashboard')
+
+    txn_type = request.POST.get('type', '')
+    ref_id = request.POST.get('ref_id', '')
+
+    try:
+        with connection.cursor() as cursor:
+            if txn_type == 'Transfer':
+                cursor.execute(
+                    "DELETE FROM auth_system_transfermiles WHERE transfer_id = %s",
+                    [ref_id]
+                )
+            elif txn_type == 'Redeem':
+                cursor.execute(
+                    "DELETE FROM auth_system_redeem WHERE id = %s",
+                    [ref_id]
+                )
+            elif txn_type == 'Package':
+                cursor.execute(
+                    "DELETE FROM auth_system_memberawardmilespackage WHERE id = %s",
+                    [ref_id]
+                )
+        messages.success(request, 'Riwayat transaksi berhasil dihapus.')
+    except DatabaseError as exc:
+        messages.error(request, _extract_db_error_message(exc))
+
+    return redirect('auth_system:staff_transaction_report')
 
 
 @login_required(login_url='auth_system:login')
@@ -952,19 +989,36 @@ def staff_mitra_create_view(request):
         if form.is_valid():
             cd = form.cleaned_data
             try:
-                with connection.cursor() as cursor:
-                    cursor.execute("""
-                        INSERT INTO auth_system_mitra
-                            (name, code, contact_person, email, phone_number, is_active, created_at, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
-                    """, [
-                        cd['name'], cd['code'],
-                        cd.get('contact_person') or None,
-                        cd['email'],
-                        cd.get('phone_number') or None,
-                        cd.get('is_active', True),
-                    ])
-                messages.success(request, f'Mitra "{cd["name"]}" berhasil ditambahkan.')
+                with transaction.atomic():
+                    with connection.cursor() as cursor:
+                        cursor.execute("""
+                            INSERT INTO auth_system_mitra
+                                (name, code, contact_person, email, phone_number,
+                                 tanggal_kerja_sama, is_active, created_at, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                        """, [
+                            cd['name'], cd['code'],
+                            cd.get('contact_person') or None,
+                            cd['email'],
+                            cd.get('phone_number') or None,
+                            cd.get('tanggal_kerja_sama') or None,
+                            cd.get('is_active', True),
+                        ])
+                        # Auto-create matching Penyedia entry
+                        penyedia_exists = Penyedia.objects.filter(code__iexact=cd['code']).exists()
+                        if not penyedia_exists:
+                            cursor.execute("""
+                                INSERT INTO auth_system_penyedia
+                                    (name, code, contact_person, email, phone_number, is_active, created_at, updated_at)
+                                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+                            """, [
+                                cd['name'], cd['code'],
+                                cd.get('contact_person') or None,
+                                cd['email'],
+                                cd.get('phone_number') or None,
+                                cd.get('is_active', True),
+                            ])
+                messages.success(request, f'Mitra "{cd["name"]}" berhasil ditambahkan dan didaftarkan sebagai Penyedia.')
                 return redirect('auth_system:staff_partners')
             except DatabaseError as exc:
                 messages.error(request, _extract_db_error_message(exc))
@@ -993,13 +1047,14 @@ def staff_mitra_edit_view(request, mitra_id):
                     cursor.execute("""
                         UPDATE auth_system_mitra
                         SET name=%s, code=%s, contact_person=%s, email=%s,
-                            phone_number=%s, is_active=%s, updated_at=NOW()
+                            phone_number=%s, tanggal_kerja_sama=%s, is_active=%s, updated_at=NOW()
                         WHERE id=%s
                     """, [
                         cd['name'], cd['code'],
                         cd.get('contact_person') or None,
                         cd['email'],
                         cd.get('phone_number') or None,
+                        cd.get('tanggal_kerja_sama') or None,
                         cd.get('is_active', True),
                         mitra_id,
                     ])
