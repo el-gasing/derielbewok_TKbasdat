@@ -526,12 +526,25 @@ class StaffMemberUpdateForm(forms.Form):
 
     def save(self):
         user = self.member.user
-        user.email = self.cleaned_data['email']
-        user.first_name = self.cleaned_data['first_name']
-        user.last_name = self.cleaned_data['last_name']
-        user.save(update_fields=['email', 'first_name', 'last_name'])
-        self.member.phone_number = self.cleaned_data['phone_number']
-        self.member.save(update_fields=['phone_number'])
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE auth_user
+                SET email=%s, first_name=%s, last_name=%s
+                WHERE id=%s
+            """, [
+                self.cleaned_data['email'],
+                self.cleaned_data['first_name'],
+                self.cleaned_data['last_name'],
+                user.id
+            ])
+            cursor.execute("""
+                UPDATE auth_system_member
+                SET phone_number=%s, updated_at=CURRENT_TIMESTAMP
+                WHERE id=%s
+            """, [
+                self.cleaned_data['phone_number'],
+                self.member.id
+            ])
         return self.member
 
 
@@ -761,9 +774,19 @@ class BaseProfileSettingsForm(forms.Form):
         return value
 
     def save(self):
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE auth_user
+                SET first_name=%s, last_name=%s
+                WHERE id=%s
+            """, [
+                self.cleaned_data['first_name'],
+                self.cleaned_data['last_name'],
+                self.user.id
+            ])
+        # Update user object in memory just in case
         self.user.first_name = self.cleaned_data['first_name']
         self.user.last_name = self.cleaned_data['last_name']
-        self.user.save(update_fields=['first_name', 'last_name'])
 
         self.profile.salutation = self.cleaned_data['salutation']
         self.profile.country_code = self.cleaned_data['country_code']
@@ -803,9 +826,20 @@ class MemberProfileSettingsForm(BaseProfileSettingsForm):
         ])
 
     def _save_profile(self):
-        self.profile.save(update_fields=[
-            'salutation', 'country_code', 'phone_number', 'nationality', 'birth_date', 'updated_at'
-        ])
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                UPDATE auth_system_member
+                SET salutation=%s, country_code=%s, phone_number=%s,
+                    nationality=%s, birth_date=%s, updated_at=CURRENT_TIMESTAMP
+                WHERE id=%s
+            """, [
+                self.cleaned_data['salutation'],
+                self.cleaned_data['country_code'],
+                self.cleaned_data['phone_number'],
+                self.cleaned_data['nationality'],
+                self.cleaned_data['birth_date'],
+                self.profile.id,
+            ])
 
 
 class StaffProfileSettingsForm(BaseProfileSettingsForm):
