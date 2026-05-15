@@ -735,7 +735,7 @@ def member_claim_create_view(request):
                                 (member_id, claim_id, maskapai_id, bandara_asal_id, bandara_tujuan_id,
                                  kelas_kabin, pnr, flight_number, ticket_number, flight_date,
                                  miles_amount, status, reason, description, created_at, updated_at)
-                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NULL,'pending',%s,%s,NOW(),NOW())
+                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NULL,'pending',%s,%s,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
                         """, [
                             member.id, claim_id,
                             maskapai or None,
@@ -816,7 +816,7 @@ def member_claim_update_view(request, claim_id):
                             UPDATE auth_system_claimmissingmiles
                             SET maskapai_id=%s, bandara_asal_id=%s, bandara_tujuan_id=%s,
                                 kelas_kabin=%s, pnr=%s, flight_number=%s, ticket_number=%s,
-                                flight_date=%s, reason=%s, description=%s, updated_at=NOW()
+                                flight_date=%s, reason=%s, description=%s, updated_at=CURRENT_TIMESTAMP
                             WHERE id=%s
                         """, [
                             maskapai or None,
@@ -931,14 +931,14 @@ def staff_claim_update_view(request, claim_id):
                     with connection.cursor() as cursor:
                         cursor.execute("""
                             UPDATE auth_system_claimmissingmiles
-                            SET status=%s, miles_amount=%s, approved_by_id=%s, description=%s, updated_at=NOW()
+                            SET status=%s, miles_amount=%s, approved_by_id=%s, description=%s, updated_at=CURRENT_TIMESTAMP
                             WHERE id=%s
                         """, [new_status, miles_amount, staff.id, description, claim.id])
 
                         if old_status != 'approved' and new_status == 'approved' and miles_amount:
                             cursor.execute("""
                                 UPDATE auth_system_member
-                                SET total_miles = total_miles + %s, updated_at = NOW()
+                                SET total_miles = total_miles + %s, updated_at = CURRENT_TIMESTAMP
                                 WHERE id = %s
                             """, [miles_amount, claim.member.id])
 
@@ -1215,18 +1215,18 @@ def member_redeem_view(request):
                     # Insert redeem record
                     cursor.execute("""
                         INSERT INTO auth_system_redeem (member_id, hadiah_id, timestamp, miles_used)
-                        VALUES (%s, %s, NOW(), %s)
+                        VALUES (%s, %s, CURRENT_TIMESTAMP, %s)
                     """, [member.id, h_id, h_miles])
 
                     # Deduct award_miles
                     cursor.execute("""
-                        UPDATE auth_system_member SET award_miles = award_miles - %s, updated_at = NOW()
+                        UPDATE auth_system_member SET award_miles = award_miles - %s, updated_at = CURRENT_TIMESTAMP
                         WHERE id = %s
                     """, [h_miles, member.id])
 
                     # Increment jumlah_terjual
                     cursor.execute("""
-                        UPDATE auth_system_hadiah SET jumlah_terjual = jumlah_terjual + 1, updated_at = NOW()
+                        UPDATE auth_system_hadiah SET jumlah_terjual = jumlah_terjual + 1, updated_at = CURRENT_TIMESTAMP
                         WHERE id = %s
                     """, [h_id])
 
@@ -1347,7 +1347,7 @@ def staff_mitra_create_view(request):
                             INSERT INTO auth_system_mitra
                                 (name, code, contact_person, email, phone_number,
                                  tanggal_kerja_sama, is_active, created_at, updated_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                         """, [
                             cd['name'], cd['code'],
                             cd.get('contact_person') or None,
@@ -1364,7 +1364,7 @@ def staff_mitra_create_view(request):
                             cursor.execute("""
                                 INSERT INTO auth_system_penyedia
                                     (name, code, contact_person, email, phone_number, is_active, created_at, updated_at)
-                                VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+                                VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                             """, [
                                 cd['name'], cd['code'],
                                 cd.get('contact_person') or None,
@@ -1403,7 +1403,7 @@ def staff_mitra_edit_view(request, mitra_id):
                     cursor.execute("""
                         UPDATE auth_system_mitra
                         SET name=%s, code=%s, contact_person=%s, email=%s,
-                            phone_number=%s, tanggal_kerja_sama=%s, is_active=%s, updated_at=NOW()
+                            phone_number=%s, tanggal_kerja_sama=%s, is_active=%s, updated_at=CURRENT_TIMESTAMP
                         WHERE id=%s
                     """, [
                         cd['name'], cd['code'],
@@ -1476,12 +1476,12 @@ def member_package_view(request):
                     cursor.execute("""
                         INSERT INTO auth_system_memberawardmilespackage
                             (award_miles_package_id, member_id, timestamp)
-                        VALUES (%s, %s, NOW())
+                        VALUES (%s, %s, CURRENT_TIMESTAMP)
                     """, [pkg_id, member.id])
 
                     cursor.execute("""
                         UPDATE auth_system_member
-                        SET award_miles = award_miles + %s, updated_at = NOW()
+                        SET award_miles = award_miles + %s, updated_at = CURRENT_TIMESTAMP
                         WHERE id = %s
                     """, [pkg_miles, member.id])
 
@@ -1614,18 +1614,18 @@ def member_transfer_create_view(request):
                             cursor.execute("""
                                 INSERT INTO auth_system_transfermiles
                                     (from_member_id, to_member_id, transfer_id, miles_amount, status, description, created_at, updated_at)
-                                VALUES (%s, %s, %s, %s, 'completed', %s, NOW(), NOW())
+                                VALUES (%s, %s, %s, %s, 'completed', %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                             """, [member.id, to_member.id, transfer_id, miles_amount, description])
 
                             cursor.execute("""
                                 UPDATE auth_system_member
-                                SET award_miles = award_miles - %s, updated_at = NOW()
+                                SET award_miles = award_miles - %s, updated_at = CURRENT_TIMESTAMP
                                 WHERE id = %s
                             """, [miles_amount, member.id])
 
                             cursor.execute("""
                                 UPDATE auth_system_member
-                                SET award_miles = award_miles + %s, updated_at = NOW()
+                                SET award_miles = award_miles + %s, updated_at = CURRENT_TIMESTAMP
                                 WHERE id = %s
                             """, [miles_amount, to_member.id])
 
