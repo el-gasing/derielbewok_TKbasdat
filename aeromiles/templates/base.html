@@ -184,6 +184,11 @@
             >Kelola Hadiah</a
           >
           <a
+            href="{% url 'auth_system:staff_partners' %}"
+            class="nav-link {% if 'mitra' in request.resolver_match.url_name or 'partner' in request.resolver_match.url_name %}active{% endif %}"
+            >Kelola Mitra</a
+          >
+          <a
             href="{% url 'auth_system:staff_transaction_report' %}"
             class="nav-link {% if request.resolver_match.url_name == 'staff_transaction_report' %}active{% endif %}"
             >Laporan Transaksi</a
