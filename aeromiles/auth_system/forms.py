@@ -160,7 +160,7 @@ def _seed_default(table_name, items):
             cursor.execute(
                 f"""INSERT INTO {table_name}
                     (name, code, email, is_active, created_at, updated_at)
-                    VALUES (%s, %s, %s, TRUE, NOW(), NOW())""",
+                    VALUES (%s, %s, %s, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
                 [item['name'], item['code'],
                  f"{item['code'].lower()}@aeromiles.local"]
             )
@@ -183,7 +183,7 @@ def _ensure_default_mitra():
             cursor.execute(
                 """INSERT INTO auth_system_mitra
                     (name, code, email, is_active, tanggal_kerja_sama, created_at, updated_at)
-                    VALUES (%s, %s, %s, TRUE, NULL, NOW(), NOW())""",
+                    VALUES (%s, %s, %s, TRUE, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
                 [item['name'], item['code'],
                  f"{item['code'].lower()}@aeromiles.local"]
             )
@@ -310,7 +310,7 @@ class MemberRegistrationForm(UserCreationForm):
                     INSERT INTO auth_user
                         (username, email, first_name, last_name, password,
                          is_superuser, is_staff, is_active, date_joined)
-                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, CURRENT_TIMESTAMP)
                     RETURNING id
                 """, [
                     self.cleaned_data['username'], self.cleaned_data['email'],
@@ -335,7 +335,7 @@ class MemberRegistrationForm(UserCreationForm):
                         (user_id, member_id, salutation, country_code, phone_number,
                          birth_date, nationality, total_miles, award_miles, is_active,
                          created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, 0, 0, TRUE, NOW(), NOW())
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 0, 0, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, [
                     user_id, member_id_val, self.cleaned_data['salutation'],
                     self.cleaned_data['country_code'], self.cleaned_data['phone_number'],
@@ -429,7 +429,7 @@ class StaffMemberCreateForm(UserCreationForm):
                     INSERT INTO auth_user
                         (username, email, first_name, last_name, password,
                          is_superuser, is_staff, is_active, date_joined)
-                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, CURRENT_TIMESTAMP)
                     RETURNING id
                 """, [
                     self.cleaned_data['username'], self.cleaned_data['email'],
@@ -454,7 +454,7 @@ class StaffMemberCreateForm(UserCreationForm):
                         (user_id, member_id, salutation, country_code, phone_number,
                          nationality, total_miles, award_miles, is_active,
                          created_at, updated_at)
-                    VALUES (%s, %s, 'mr', '+62', %s, 'Indonesia', 0, 0, TRUE, NOW(), NOW())
+                    VALUES (%s, %s, 'mr', '+62', %s, 'Indonesia', 0, 0, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, [user_id, member_id_val, self.cleaned_data.get('phone_number', '')])
         except DatabaseError as e:
             raise forms.ValidationError(_extract_trigger_msg(e))
@@ -625,7 +625,7 @@ class StaffRegistrationForm(UserCreationForm):
                     INSERT INTO auth_user
                         (username, email, first_name, last_name, password,
                          is_superuser, is_staff, is_active, date_joined)
-                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, CURRENT_TIMESTAMP)
                     RETURNING id
                 """, [
                     self.cleaned_data['username'], self.cleaned_data['email'],
@@ -650,7 +650,7 @@ class StaffRegistrationForm(UserCreationForm):
                         (user_id, staff_id, salutation, country_code, phone_number,
                          birth_date, nationality, maskapai_id, department, is_active,
                          created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, NOW(), NOW())
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, [
                     user_id, staff_id, self.cleaned_data['salutation'],
                     self.cleaned_data['country_code'], self.cleaned_data['phone_number'],
@@ -866,7 +866,7 @@ class StaffProfileSettingsForm(BaseProfileSettingsForm):
             cursor.execute(
                 """UPDATE auth_system_staff
                    SET salutation=%s, country_code=%s, phone_number=%s,
-                       nationality=%s, birth_date=%s, maskapai_id=%s, updated_at=NOW()
+                       nationality=%s, birth_date=%s, maskapai_id=%s, updated_at=CURRENT_TIMESTAMP
                    WHERE id=%s""",
                 [
                     self.cleaned_data['salutation'],
@@ -1137,7 +1137,7 @@ class StaffManageMemberCreateForm(forms.Form):
                     INSERT INTO auth_user
                         (username, email, first_name, last_name, password,
                          is_superuser, is_staff, is_active, date_joined)
-                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, NOW())
+                    VALUES (%s, %s, %s, %s, %s, FALSE, FALSE, TRUE, CURRENT_TIMESTAMP)
                     RETURNING id
                 """, [
                     self.cleaned_data['username'], self.cleaned_data['email'],
@@ -1162,7 +1162,7 @@ class StaffManageMemberCreateForm(forms.Form):
                         (user_id, member_id, salutation, country_code, phone_number,
                          nationality, total_miles, award_miles, is_active,
                          created_at, updated_at)
-                    VALUES (%s, %s, 'mr', '+62', %s, 'Indonesia', 0, 0, TRUE, NOW(), NOW())
+                    VALUES (%s, %s, 'mr', '+62', %s, 'Indonesia', 0, 0, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     RETURNING id
                 """, [user_id, member_id_val, self.cleaned_data['phone_number']])
                 member_pk = cursor.fetchone()[0]
@@ -1260,13 +1260,13 @@ class StaffManageMemberUpdateForm(forms.Form):
             if tier_id:
                 cursor.execute("""
                     UPDATE auth_system_member
-                    SET phone_number = %s, tier_id = %s, updated_at = NOW()
+                    SET phone_number = %s, tier_id = %s, updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                 """, [self.cleaned_data['phone_number'], tier_id, self.member.id])
             else:
                 cursor.execute("""
                     UPDATE auth_system_member
-                    SET phone_number = %s, updated_at = NOW()
+                    SET phone_number = %s, updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                 """, [self.cleaned_data['phone_number'], self.member.id])
         return self.member
@@ -1439,7 +1439,7 @@ class HadiahForm(forms.Form):
                     UPDATE auth_system_hadiah
                     SET nama_hadiah = %s, penyedia_id = %s, miles_diperlukan = %s,
                         deskripsi = %s, tanggal_valid_mulai = %s, tanggal_valid_akhir = %s,
-                        updated_at = NOW()
+                        updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                     RETURNING id, kode_hadiah, nama_hadiah
                 """, [
@@ -1453,7 +1453,7 @@ class HadiahForm(forms.Form):
                         (kode_hadiah, nama_hadiah, penyedia_id, miles_diperlukan,
                          deskripsi, tanggal_valid_mulai, tanggal_valid_akhir,
                          status, jumlah_tersedia, jumlah_terjual, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'active', 1, 0, NOW(), NOW())
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'active', 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     RETURNING id, kode_hadiah, nama_hadiah
                 """, [
                     d['kode_hadiah'], d['nama_hadiah'], penyedia_id, d['miles_diperlukan'],
