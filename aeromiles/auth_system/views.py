@@ -43,7 +43,7 @@ from .models import (
     Maskapai, Member, MemberAwardMilesPackage, Mitra,
     Redeem, Staff, TransferMiles,
 )
-from .services import check_duplicate_claim, update_member_tier
+from .services import check_duplicate_claim
 
 
 def _get_member(user):
@@ -182,7 +182,7 @@ def _get_hadiah_by_id(hadiah_id):
         cursor.execute("""
             SELECT h.id, h.kode_hadiah, h.nama_hadiah, h.deskripsi,
                    h.miles_diperlukan, h.tanggal_valid_mulai, h.tanggal_valid_akhir,
-                   h.is_active, h.created_at, h.updated_at,
+                   h.status, h.jumlah_tersedia, h.jumlah_terjual, h.created_at, h.updated_at,
                    h.penyedia_id, h.mitra_id,
                    p.name AS p_name, p.code AS p_code,
                    mt.name AS mt_name, mt.code AS mt_code
@@ -201,7 +201,8 @@ def _get_hadiah_by_id(hadiah_id):
         deskripsi=d['deskripsi'], miles_diperlukan=d['miles_diperlukan'],
         tanggal_valid_mulai=d['tanggal_valid_mulai'],
         tanggal_valid_akhir=d['tanggal_valid_akhir'],
-        is_active=d['is_active'], created_at=d['created_at'],
+        status=d['status'], jumlah_tersedia=d['jumlah_tersedia'],
+        jumlah_terjual=d['jumlah_terjual'], created_at=d['created_at'],
         updated_at=d['updated_at'],
         penyedia_id=d['penyedia_id'], mitra_id=d['mitra_id'],
     )
@@ -1740,7 +1741,7 @@ def staff_hadiah_list_view(request):
     sql = """
         SELECT h.id, h.kode_hadiah, h.nama_hadiah, h.deskripsi,
                h.miles_diperlukan, h.tanggal_valid_mulai, h.tanggal_valid_akhir,
-               h.is_active, h.created_at, h.updated_at,
+               h.status, h.jumlah_tersedia, h.jumlah_terjual, h.created_at, h.updated_at,
                p.id AS p_id, p.name AS p_name, p.code AS p_code,
                mt.id AS mt_id, mt.name AS mt_name, mt.code AS mt_code
         FROM auth_system_hadiah h
@@ -1752,8 +1753,8 @@ def staff_hadiah_list_view(request):
         where.append("h.penyedia_id = %s")
         params.append(penyedia_id)
     if status:
-        where.append("h.is_active = %s")
-        params.append(status == 'active')
+        where.append("h.status = %s")
+        params.append(status)
     if where:
         sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY h.created_at DESC"
@@ -1771,7 +1772,8 @@ def staff_hadiah_list_view(request):
             deskripsi=d['deskripsi'], miles_diperlukan=d['miles_diperlukan'],
             tanggal_valid_mulai=d['tanggal_valid_mulai'],
             tanggal_valid_akhir=d['tanggal_valid_akhir'],
-            is_active=d['is_active'], created_at=d['created_at'],
+            status=d['status'], jumlah_tersedia=d['jumlah_tersedia'],
+            jumlah_terjual=d['jumlah_terjual'], created_at=d['created_at'],
             updated_at=d['updated_at'],
         )
         h.penyedia = SimpleNamespace(id=d['p_id'], name=d['p_name'], code=d['p_code']) if d['p_id'] else None
