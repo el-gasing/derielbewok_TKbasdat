@@ -43,7 +43,7 @@ from .models import (
     Maskapai, Member, MemberAwardMilesPackage, Mitra,
     Redeem, Staff, TransferMiles,
 )
-from .services import check_duplicate_claim, update_member_tier
+from .services import check_duplicate_claim
 
 
 def _get_member(user):
