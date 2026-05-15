@@ -689,8 +689,6 @@ class StaffRegistrationForm(UserCreationForm):
         maskapai = self.cleaned_data.get('maskapai')
         if not maskapai:
             raise forms.ValidationError('Maskapai wajib dipilih.')
-        if not maskapai.is_active:
-            raise forms.ValidationError('Maskapai tidak aktif.')
         return maskapai
 
 
