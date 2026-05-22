@@ -1672,7 +1672,7 @@ def add_member_identity_view(request):
         form = IdentityForm(request.POST)
         if form.is_valid():
             identity = form.save(commit=False)
-            identity.member = member
+            identity.member_id = member.id
             identity.is_expired = identity.expiry_date <= date.today()
             identity.save()
             messages.success(request, 'Identitas berhasil ditambahkan.')
@@ -1691,12 +1691,12 @@ def edit_member_identity_view(request, identity_id):
         messages.error(request, 'Halaman ini hanya untuk member.')
         return redirect('auth_system:dashboard')
 
-    identity = get_object_or_404(Identity, id=identity_id, member=member)
+    identity = get_object_or_404(Identity, id=identity_id, member_id=member.id)
     if request.method == 'POST':
         form = IdentityForm(request.POST, instance=identity)
         if form.is_valid():
             updated_identity = form.save(commit=False)
-            updated_identity.member = member
+            updated_identity.member_id = member.id
             updated_identity.is_expired = updated_identity.expiry_date <= date.today()
             updated_identity.save()
             messages.success(request, 'Identitas berhasil diperbarui.')
@@ -1716,7 +1716,7 @@ def delete_member_identity_view(request, identity_id):
         messages.error(request, 'Halaman ini hanya untuk member.')
         return redirect('auth_system:dashboard')
 
-    identity = get_object_or_404(Identity, id=identity_id, member=member)
+    identity = get_object_or_404(Identity, id=identity_id, member_id=member.id)
     identity.delete()
     messages.success(request, 'Identitas berhasil dihapus.')
     return redirect('auth_system:member_identities_list')
