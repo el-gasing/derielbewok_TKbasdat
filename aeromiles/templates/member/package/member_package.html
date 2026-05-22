@@ -329,6 +329,11 @@
     </div>
 </div>
 
+<form id="purchaseForm" method="post" action="{% url 'auth_system:member_package' %}">
+    {% csrf_token %}
+    <input type="hidden" name="package_id" id="purchasePackageId">
+</form>
+
 <div id="purchaseModal" class="purchase-modal" aria-hidden="true">
     <div class="purchase-modal-content" role="dialog" aria-modal="true" aria-labelledby="purchaseModalTitle">
         <div class="modal-header-row">
@@ -367,14 +372,22 @@
     const closePurchaseModal = document.getElementById('closePurchaseModal');
     const cancelPurchaseModal = document.getElementById('cancelPurchaseModal');
 
+    const purchaseForm = document.getElementById('purchaseForm');
+    const purchasePackageId = document.getElementById('purchasePackageId');
+
     document.querySelectorAll('.btn-buy').forEach((button) => {
         button.addEventListener('click', () => {
             modalPackageCode.textContent = button.dataset.packageCode;
             modalPackageMiles.textContent = `+${button.dataset.packageMiles}`;
             modalPackagePrice.textContent = `Rp ${button.dataset.packagePrice}`;
+            purchasePackageId.value = button.dataset.packageCode;
             purchaseModal.classList.add('show');
             purchaseModal.setAttribute('aria-hidden', 'false');
         });
+    });
+
+    document.querySelector('.btn-modal-confirm').addEventListener('click', () => {
+        purchaseForm.submit();
     });
 
     function hidePurchaseModal() {

@@ -470,10 +470,11 @@
                             <button
                                 type="button"
                                 class="btn-redeem"
+                                data-reward-id="{{ reward.id }}"
                                 data-reward-name="{{ reward.name }}"
                                 data-reward-code="{{ reward.code }}"
                                 data-reward-miles="{{ reward.miles|floatformat:0 }}"
-                                {% if member.total_miles < reward.miles %}disabled{% endif %}
+                                {% if member.award_miles < reward.miles %}disabled{% endif %}
                             >
                                 <i class="fa-solid fa-arrow-right-arrow-left"></i>
                                 Redeem
@@ -532,6 +533,11 @@
     </section>
 </div>
 
+<form id="redeemForm" method="post" action="{% url 'auth_system:member_redeem' %}">
+    {% csrf_token %}
+    <input type="hidden" name="hadiah_id" id="redeemHadiahId">
+</form>
+
 <div id="redeemModal" class="redeem-modal" aria-hidden="true">
     <div class="redeem-modal-content" role="dialog" aria-modal="true" aria-labelledby="redeemModalTitle">
         <h2 id="redeemModalTitle">Konfirmasi Redeem</h2>
@@ -550,7 +556,7 @@
         </div>
         <div class="modal-actions">
             <button type="button" class="btn-modal btn-modal-cancel" id="closeRedeemModal">Batal</button>
-            <button type="button" class="btn-modal btn-modal-redeem">Redeem</button>
+            <button type="button" class="btn-modal btn-modal-redeem" id="confirmRedeemBtn">Redeem</button>
         </div>
     </div>
 </div>
@@ -575,14 +581,23 @@
     const modalRewardName = document.getElementById('modalRewardName');
     const modalRewardMiles = document.getElementById('modalRewardMiles');
 
+    const redeemForm = document.getElementById('redeemForm');
+    const redeemHadiahId = document.getElementById('redeemHadiahId');
+    const confirmRedeemBtn = document.getElementById('confirmRedeemBtn');
+
     document.querySelectorAll('.btn-redeem:not(:disabled)').forEach((button) => {
         button.addEventListener('click', () => {
             modalRewardCode.textContent = button.dataset.rewardCode;
             modalRewardName.textContent = button.dataset.rewardName;
             modalRewardMiles.textContent = `${button.dataset.rewardMiles} miles`;
+            redeemHadiahId.value = button.dataset.rewardId;
             modal.classList.add('show');
             modal.setAttribute('aria-hidden', 'false');
         });
+    });
+
+    confirmRedeemBtn.addEventListener('click', () => {
+        redeemForm.submit();
     });
 
     function hideRedeemModal() {

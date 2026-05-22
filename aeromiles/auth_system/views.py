@@ -196,15 +196,20 @@ def _get_hadiah_by_id(hadiah_id):
     if not row:
         return None
     d = dict(zip(cols, row))
+    today = date.today()
+    tva = d['tanggal_valid_akhir']
+    tvm = d['tanggal_valid_mulai']
     ns = SimpleNamespace(
         id=d['id'], kode_hadiah=d['kode_hadiah'], nama_hadiah=d['nama_hadiah'],
         deskripsi=d['deskripsi'], miles_diperlukan=d['miles_diperlukan'],
-        tanggal_valid_mulai=d['tanggal_valid_mulai'],
-        tanggal_valid_akhir=d['tanggal_valid_akhir'],
+        tanggal_valid_mulai=tvm, tanggal_valid_akhir=tva,
         status=d['status'], jumlah_tersedia=d['jumlah_tersedia'],
         jumlah_terjual=d['jumlah_terjual'], created_at=d['created_at'],
         updated_at=d['updated_at'],
         penyedia_id=d['penyedia_id'], mitra_id=d['mitra_id'],
+        sudah_kadaluarsa=bool(tva and tva < today),
+        is_periode_valid=bool(tvm and tva and tvm <= today <= tva),
+        sisa_hadiah=(d['jumlah_tersedia'] or 0) - (d['jumlah_terjual'] or 0),
     )
     ns.penyedia = SimpleNamespace(
         id=d['penyedia_id'], name=d['p_name'], code=d['p_code']
@@ -1252,7 +1257,21 @@ def member_redeem_view(request):
             ORDER BY h.miles_diperlukan
         """, [date.today(), date.today()])
         cols = [c[0] for c in cursor.description]
-        available_rewards = [dict(zip(cols, row)) for row in cursor.fetchall()]
+        available_rewards = []
+        for row in cursor.fetchall():
+            r = dict(zip(cols, row))
+            available_rewards.append({
+                'id': r['id'],
+                'code': r['kode_hadiah'],
+                'name': r['nama_hadiah'],
+                'miles': r['miles_diperlukan'],
+                'description': r['deskripsi'],
+                'valid_from': r['tanggal_valid_mulai'],
+                'valid_until': r['tanggal_valid_akhir'],
+                'provider': r['penyedia_name'],
+                'category': '',
+                'sisa': r['jumlah_tersedia'] - r['jumlah_terjual'],
+            })
 
         cursor.execute("""
             SELECT r.timestamp, r.miles_used, h.nama_hadiah
@@ -1780,17 +1799,22 @@ def staff_hadiah_list_view(request):
         cols = [c[0] for c in cursor.description]
         rows = cursor.fetchall()
 
+    today = date.today()
     hadiah_list = []
     for r in rows:
         d = dict(zip(cols, r))
+        tva = d['tanggal_valid_akhir']
+        tvm = d['tanggal_valid_mulai']
         h = SimpleNamespace(
             id=d['id'], kode_hadiah=d['kode_hadiah'], nama_hadiah=d['nama_hadiah'],
             deskripsi=d['deskripsi'], miles_diperlukan=d['miles_diperlukan'],
-            tanggal_valid_mulai=d['tanggal_valid_mulai'],
-            tanggal_valid_akhir=d['tanggal_valid_akhir'],
+            tanggal_valid_mulai=tvm, tanggal_valid_akhir=tva,
             status=d['status'], jumlah_tersedia=d['jumlah_tersedia'],
             jumlah_terjual=d['jumlah_terjual'], created_at=d['created_at'],
             updated_at=d['updated_at'],
+            sudah_kadaluarsa=bool(tva and tva < today),
+            is_periode_valid=bool(tvm and tva and tvm <= today <= tva),
+            sisa_hadiah=(d['jumlah_tersedia'] or 0) - (d['jumlah_terjual'] or 0),
         )
         h.penyedia = SimpleNamespace(id=d['p_id'], name=d['p_name'], code=d['p_code']) if d['p_id'] else None
         h.mitra = SimpleNamespace(id=d['mt_id'], name=d['mt_name'], code=d['mt_code']) if d['mt_id'] else None
