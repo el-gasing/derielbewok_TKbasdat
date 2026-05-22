@@ -1445,6 +1445,20 @@ def staff_mitra_delete_view(request, mitra_id):
     return redirect('auth_system:staff_partners')
 
 
+def _ensure_default_packages():
+    defaults = [
+        ('AMP-001', 150000.00, 1000),
+        ('AMP-002', 650000.00, 5000),
+        ('AMP-003', 1200000.00, 10000),
+        ('AMP-004', 2750000.00, 25000),
+    ]
+    for p_id, harga, miles in defaults:
+        AwardMilesPackage.objects.get_or_create(
+            id=p_id,
+            defaults={'harga_paket': harga, 'jumlah_award_miles': miles}
+        )
+
+
 @require_http_methods(["GET", "POST"])
 @login_required(login_url='auth_system:login')
 def member_package_view(request):
@@ -1452,6 +1466,8 @@ def member_package_view(request):
     if not member:
         messages.error(request, 'Halaman ini hanya untuk member.')
         return redirect('auth_system:dashboard')
+
+    _ensure_default_packages()
 
     if request.method == 'POST':
         package_id = request.POST.get('package_id')

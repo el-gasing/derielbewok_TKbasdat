@@ -189,6 +189,28 @@ def _ensure_default_mitra():
             )
 
 
+def _ensure_default_bandara():
+    DEFAULT_BANDARA = [
+        ('CGK', 'Soekarno-Hatta International Airport', 'Jakarta', 'Indonesia'),
+        ('SIN', 'Changi Airport', 'Singapore', 'Singapore'),
+        ('DPS', 'Ngurah Rai International Airport', 'Denpasar', 'Indonesia'),
+        ('KUL', 'Kuala Lumpur International Airport', 'Kuala Lumpur', 'Malaysia'),
+        ('BKK', 'Suvarnabhumi Airport', 'Bangkok', 'Thailand'),
+        ('NRT', 'Narita International Airport', 'Tokyo', 'Japan'),
+    ]
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT 1 FROM auth_system_bandara LIMIT 1")
+        if cursor.fetchone():
+            return
+        for iata, nama, kota, negara in DEFAULT_BANDARA:
+            cursor.execute(
+                """INSERT INTO auth_system_bandara
+                   (iata_code, nama, kota, negara)
+                   VALUES (%s, %s, %s, %s)""",
+                [iata, nama, kota, negara]
+            )
+
+
 class LoginForm(AuthenticationForm):
     """Form untuk login dengan username dan password"""
     username = forms.CharField(
@@ -982,6 +1004,8 @@ class ClaimMissingMilesForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        _ensure_default_maskapai()
+        _ensure_default_bandara()
         with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT id, code, name FROM auth_system_maskapai WHERE is_active = TRUE ORDER BY name"
