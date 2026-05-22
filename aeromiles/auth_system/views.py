@@ -1510,7 +1510,7 @@ def member_package_view(request):
     # GET: load packages and purchase history
     with connection.cursor() as cursor:
         cursor.execute("""
-            SELECT id, jumlah_award_miles, harga_paket
+            SELECT id AS code, jumlah_award_miles AS miles, harga_paket AS price
             FROM auth_system_awardmilespackage
             ORDER BY jumlah_award_miles
         """)
