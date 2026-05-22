@@ -83,15 +83,28 @@ class Command(BaseCommand):
         )
 
         with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT staff_id FROM auth_system_staff ORDER BY id DESC LIMIT 1"
+            )
+            row = cursor.fetchone()
+            if row and row[0].startswith('STF'):
+                try:
+                    last_num = int(row[0][3:])
+                except ValueError:
+                    last_num = 0
+            else:
+                last_num = 0
+            staff_id = f'STF{last_num + 1:03d}'
+
             cursor.execute("""
                 INSERT INTO auth_system_staff
-                    (user_id, salutation, country_code, phone_number,
+                    (user_id, staff_id, salutation, country_code, phone_number,
                      birth_date, nationality, maskapai_id, department,
                      is_active, created_at, updated_at)
-                VALUES (%s, 'Mr', '+62', '08987654321',
+                VALUES (%s, %s, 'Mr', '+62', '08987654321',
                         '1985-06-15', 'Indonesian', %s, 'Operations',
                         TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            """, [user.id, maskapai_id])
+            """, [user.id, staff_id, maskapai_id])
 
         self.stdout.write(self.style.SUCCESS(
             f'\n[STAFF]\n  username : {username}\n  email    : {email}\n  password : {password}'
